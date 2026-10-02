@@ -7,6 +7,22 @@
 
 ---
 
+## Build status (updated 2026-10-02)
+
+**Live task tracker: [TASKS.md](TASKS.md)**, which lists every remaining task with owner and status.
+
+**Phase 0 findings**
+- "Most replayed" is served for about 6 in 16 videos (skewed to uploads older than ~1 month). The collector probes 2–3× more videos than it keeps.
+- Captions: Hindi original ASR is available as `hi-orig`. Caption downloads hit HTTP 429 after roughly 20 requests per IP, so collection runs as pass A (metadata + "Most replayed") and pass B (captions, with backoff), spread across machines. Groq Whisper on audio is the fallback.
+- 162 seed channels were discovered across the 6 cells (`ml/seeds/channels.json`).
+- Visual direction chosen through impeccable: **Revision Draft** (shooting-script revision pages + the script doctor's red pen). Contract is in `apps/web/.impeccable/surfaces/`.
+
+**Done:** the `Analysis` contract (Pydantic → JSON Schema → TypeScript); `retent_core` (text EN/HI/Hinglish, features, v0 hazard engine, 9 flag detectors, counterfactual simulator); FastAPI (jobs, SSE, simulate, samples); D1 collector and seeds; fixtures; web Workspace (curve with red pen, lanes, screenplay script with revision marks, call-sheet metrics, fix queue + inspector, Blue/Pink revisions, export of EDL, script, chapters and CSV); intake with live stage progress; projects list.
+
+**Next:** LLM router (Claude + Groq) and the semantic pass; interest-model training plus `eval_report.json`; landing page (impeccable surface round); Validation Lab, Blind Test, Hook Lab, Title Fit, X-Ray, Retention Import; responsive pass; finish review.
+
+---
+
 ## 0. Name options
 
 | Name | Why it works | Watch-out |
