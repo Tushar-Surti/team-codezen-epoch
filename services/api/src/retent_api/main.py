@@ -46,7 +46,7 @@ def samples() -> list[dict]:
     for p in sorted((ROOT / "fixtures" / "samples").glob("*.json")):
         import json
 
-        s = json.loads(p.read_text())
+        s = json.loads(p.read_text(encoding="utf-8"))
         out.append({k: s.get(k) for k in ("id", "label", "note", "title", "category", "thumbnail_text", "script")})
     return out
 

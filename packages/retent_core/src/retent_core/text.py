@@ -25,6 +25,9 @@ HINGLISH_MARKERS = {
     "bahut", "sabse", "hoon", "hun", "kuch", "sab", "bhaiya", "doston", "dosto", "aaj", "phir", "baat",
     "lagta", "lagti", "milta", "milti", "thoda", "thodi", "zyada", "achhi", "achha", "theek", "hai,",
 }
+# Markers that are also common English words. They stay stopwords but don't count as Hinglish
+# evidence, otherwise ordinary English ("the", "to") crosses the threshold on its own.
+AMBIGUOUS_MARKERS = {"the", "to", "main", "ho", "hun", "sab", "wo", "ye", "ka", "kar"}
 
 # Speaking rates in words per second. Defaults only; retent_ml calibrates them per language and
 # category from caption timings and writes models/speaking_rates.json, which overrides these.
@@ -124,7 +127,7 @@ def detect_language(text: str) -> Language:
     if deva > 0.3:
         return Language.hi
     toks = [t for t in tokens(text) if not DEVANAGARI.match(t)]
-    if toks and sum(t in HINGLISH_MARKERS for t in toks) / len(toks) > 0.08:
+    if toks and sum(t in HINGLISH_MARKERS and t not in AMBIGUOUS_MARKERS for t in toks) / len(toks) > 0.08:
         return Language.hinglish
     return Language.en
 

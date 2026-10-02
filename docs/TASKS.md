@@ -16,10 +16,10 @@ Update this file whenever a task changes state; it is the single source of truth
 | 3. Core loop | 8 | 1 | 4 |
 | 4. Differentiators | 0 | 4 | 10 |
 | 5. Validation & discovery | 0 | 0 | 5 |
-| 6. Finish | 0 | 0 | 8 |
+| 6. Finish | 0 | 1 | 7 |
 | 7. Pitch kit | 0 | 1 | 5 |
 | 8. Showstoppers | 0 | 0 | 5 |
-| **Total** | **18** | **8** | **60** |
+| **Total** | **18** | **9** | **59** |
 
 ---
 
@@ -128,7 +128,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | Mobile layout: rail → bottom bar, stacked panels | You + Claude | ⬜ | Desktop done; phone width cramped |
 | impeccable critique → audit → harden → polish | You + Claude | ⬜ | |
 | Finish reviewer + DESIGN.md (documenter) | Claude | ⬜ | Required to close the direction contract |
-| Tests: pytest for the core, Playwright end-to-end demo flow | Claude | ⬜ | Playwright installed; screenshot scripts exist |
+| Tests: pytest for the core, Playwright end-to-end demo flow | Claude | 🟡 | pytest done: core + API (`uv run pytest`); Playwright flow left |
 | Demo mode (pre-cached projects, replay recorded streams) | Claude | ⬜ | |
 | Deploy: Vercel (web) + Railway/Render (API) | You + Claude | ⬜ | Demo runs locally first |
 | Fix known rough edges: weak auto section titles; fixes with no measurable gain | Claude | ⬜ | Mostly solved by the LLM pass |

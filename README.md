@@ -32,6 +32,8 @@ corepack pnpm install           # web deps (run inside apps/web the first time)
 
 pnpm dev:api                    # API on http://127.0.0.1:8000
 pnpm dev:web                    # Web on http://localhost:3000
+
+uv run pytest                   # core + API tests
 ```
 
 Open http://localhost:3000/new and click **Load the sample script**, or open the sample analysis at http://localhost:3000/a/sample-hinglish-tech.

@@ -27,7 +27,7 @@ class Store:
 
     def get_raw(self, analysis_id: str) -> dict | None:
         p = self._path(analysis_id)
-        return json.loads(p.read_text()) if p else None
+        return json.loads(p.read_text(encoding="utf-8")) if p else None
 
     def get(self, analysis_id: str) -> Analysis | None:
         raw = self.get_raw(analysis_id)
@@ -44,7 +44,7 @@ class Store:
         payload = json.loads(analysis.model_dump_json())
         if extra:
             payload.update(extra)
-        (self.data_dir / f"{analysis.id}.json").write_text(json.dumps(payload, ensure_ascii=False))
+        (self.data_dir / f"{analysis.id}.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 
     def list(self) -> list[dict]:
         rows = []
@@ -52,7 +52,7 @@ class Store:
             for p in sorted(base.glob("*.json"), key=lambda x: -x.stat().st_mtime):
                 if p.name == "index.json":
                     continue
-                raw = json.loads(p.read_text())
+                raw = json.loads(p.read_text(encoding="utf-8"))
                 m = raw["metrics"]
                 worst = raw["flags"][0] if raw["flags"] else None
                 rows.append({

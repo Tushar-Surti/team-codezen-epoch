@@ -1,6 +1,7 @@
-/** Client-side mirror of retent_core.text.detect_language, for live feedback while typing. */
+/** Client-side mirror of retent_core.text.detect_language, for live feedback while typing.
+ *  Markers that are also English words ("to", "main", …) are left out, as in AMBIGUOUS_MARKERS. */
 const HINGLISH = new Set(
-  "hai hain ho kya nahi nahin aur toh to ki ka ke mein main yeh ye woh wo bhai acha accha kaise kyun kyunki lekin matlab dekho yaar bhi hum aap apna apne isme iska uska kar karo karna raha rahe rahi gaya gayi tha thi chahiye wala wali abhi".split(" "),
+  "hai hain kya nahi nahin aur toh ki ke mein yeh woh bhai acha accha kaise kyun kyunki lekin matlab dekho yaar bhi hum aap apna apne isme iska uska karo karna raha rahe rahi gaya gayi tha thi chahiye wala wali abhi".split(" "),
 );
 
 export type Lang = "en" | "hi" | "hinglish";
