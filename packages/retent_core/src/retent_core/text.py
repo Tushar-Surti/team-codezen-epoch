@@ -22,6 +22,8 @@ HINGLISH_MARKERS = {
     "yeh", "ye", "woh", "wo", "bhai", "acha", "accha", "kaise", "kyun", "kyunki", "lekin", "matlab",
     "dekho", "yaar", "bhi", "hum", "aap", "apna", "apne", "isme", "iska", "uska", "kar", "karo", "karna",
     "raha", "rahe", "rahi", "gaya", "gayi", "tha", "thi", "the", "chahiye", "wala", "wali", "abhi",
+    "bahut", "sabse", "hoon", "hun", "kuch", "sab", "bhaiya", "doston", "dosto", "aaj", "phir", "baat",
+    "lagta", "lagti", "milta", "milti", "thoda", "thodi", "zyada", "achhi", "achha", "theek", "hai,",
 }
 
 # Speaking rates in words per second. Defaults only; retent_ml calibrates them per language and

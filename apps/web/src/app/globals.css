@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+/* ── Revision Draft world ─────────────────────────────────────────────────────
+   Bond-white script paper, carbon ink, navy cover stock with brass brads.
+   Script-doctor red marks risk only. WGA revision colors mark drafts only:
+   each has a paper tint (changed lines) and an ink step (chart marks, validated
+   for CVD separation in order Blue → Pink → Goldenrod → Green). */
+:root {
+  --paper: #f7f8f5;
+  --paper-raised: #fcfcfa;
+  --paper-sunk: #eef0eb;
+  --rule: #dcdfd8;
+  --rule-strong: #c3c7be;
+  --ink: #17171a;
+  --ink-2: #45474d;
+  --ink-3: #62656c;
+
+  --cover: #1b2440;
+  --cover-2: #243052;
+  --cover-3: #33406a;
+  --cover-ink: #eef0f6;
+  --cover-ink-2: #aab3ca;
+  --brass: #b08d3c;
+  --brass-bright: #d7b25a;
+
+  --pen: #d7261e;
+  --pen-text: #b11f18;
+  --pen-wash: rgb(215 38 30 / 0.08);
+  --pen-wash-strong: rgb(215 38 30 / 0.14);
+
+  --rev-blue: #2f5fd0;
+  --rev-pink: #d14b7d;
+  --rev-gold: #c07a00;
+  --rev-green: #178c6e;
+  --rev-blue-paper: #e3eafb;
+  --rev-pink-paper: #fbe4ec;
+  --rev-gold-paper: #faebcb;
+  --rev-green-paper: #dcf1ea;
+
+  --actual: #8a4bd6;
+
+  --sev-1: #f1c8c3;
+  --sev-2: #e8978f;
+  --sev-3: #df6459;
+  --sev-4: #d7261e;
+  --sev-5: #9e1b15;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-1: 160ms;
+  --dur-2: 240ms;
+  --dur-3: 320ms;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-cover: var(--cover);
+  --color-cover-2: var(--cover-2);
+  --color-cover-3: var(--cover-3);
+  --color-cover-ink: var(--cover-ink);
+  --color-cover-ink-2: var(--cover-ink-2);
+  --color-brass: var(--brass);
+  --color-brass-bright: var(--brass-bright);
+  --color-pen: var(--pen);
+  --color-pen-text: var(--pen-text);
+  --color-pen-wash: var(--pen-wash);
+  --color-rev-blue: var(--rev-blue);
+  --color-rev-pink: var(--rev-pink);
+  --color-rev-gold: var(--rev-gold);
+  --color-rev-green: var(--rev-green);
+  --color-rev-blue-paper: var(--rev-blue-paper);
+  --color-rev-pink-paper: var(--rev-pink-paper);
+  --color-rev-gold-paper: var(--rev-gold-paper);
+  --color-rev-green-paper: var(--rev-green-paper);
+  --color-actual: var(--actual);
+
+  --font-ui: var(--font-anek-latin), var(--font-anek-deva), ui-sans-serif, system-ui, sans-serif;
+  --font-script: var(--font-courier), var(--font-tiro-deva), ui-monospace, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --ease-out: var(--ease-out);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  ::selection {
+    background: var(--rev-blue-paper);
+    color: var(--ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+  input,
+  textarea {
+    caret-color: var(--pen);
+  }
+  /* Thin, paper-toned scrollbars inside panels. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--rule-strong);
+    border: 3px solid var(--paper);
+    border-radius: 999px;
+  }
+  a {
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+}
+
+@layer utilities {
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  .wdth-condensed {
+    font-variation-settings: "wdth" 82;
+  }
+  .wdth-wide {
+    font-variation-settings: "wdth" 112;
+  }
+  .font-script {
+    font-family: var(--font-script);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

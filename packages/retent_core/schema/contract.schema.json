@@ -123,6 +123,7 @@
         }
       },
       "required": [
+        "schema_version",
         "id",
         "created_at",
         "status",
@@ -130,9 +131,17 @@
         "engine",
         "meta",
         "sentences",
+        "sections",
         "curve",
         "metrics",
-        "model"
+        "flags",
+        "fixes",
+        "promises",
+        "loops",
+        "redundancy",
+        "pacing",
+        "model",
+        "warnings"
       ],
       "title": "Analysis",
       "type": "object"
@@ -212,7 +221,13 @@
       },
       "required": [
         "title",
-        "category"
+        "category",
+        "script",
+        "source_url",
+        "candidate_titles",
+        "thumbnail_text",
+        "language",
+        "engine"
       ],
       "title": "AnalyzeRequest",
       "type": "object"
@@ -271,6 +286,7 @@
       },
       "required": [
         "bins",
+        "typical",
         "calibration",
         "calibration_n"
       ],
@@ -380,6 +396,7 @@
         "intro_retention",
         "apv",
         "avd_seconds",
+        "viewers_at_payoff",
         "runtime_seconds",
         "watch_time_per_1000"
       ],
@@ -442,7 +459,11 @@
         }
       },
       "required": [
-        "op"
+        "op",
+        "sentence_ids",
+        "after_sentence_id",
+        "new_text",
+        "note"
       ],
       "title": "EditOp",
       "type": "object"
@@ -541,7 +562,11 @@
         "sentence_ids",
         "quote",
         "start",
-        "end"
+        "end",
+        "related_sentence_ids",
+        "related_quote",
+        "related_start",
+        "related_end"
       ],
       "title": "Evidence",
       "type": "object"
@@ -594,6 +619,7 @@
         "title",
         "rationale",
         "ops",
+        "delta",
         "provenance"
       ],
       "title": "Fix",
@@ -690,6 +716,9 @@
         "viewers_lost",
         "confidence",
         "evidence",
+        "signals",
+        "norm",
+        "fix_ids",
         "provenance"
       ],
       "title": "Flag",
@@ -868,7 +897,11 @@
         "duration_seconds",
         "intro_retention",
         "apv",
-        "avd_seconds"
+        "avd_seconds",
+        "payoff_time",
+        "payoff_sentence_id",
+        "viewers_at_payoff",
+        "key_moments"
       ],
       "title": "Metrics",
       "type": "object"
@@ -903,7 +936,8 @@
       },
       "required": [
         "version",
-        "trained_on"
+        "trained_on",
+        "eval_report"
       ],
       "title": "ModelInfo",
       "type": "object"
@@ -987,7 +1021,9 @@
       "required": [
         "id",
         "opened_at",
+        "closed_at",
         "open_text",
+        "close_text",
         "status"
       ],
       "title": "OpenLoop",
@@ -1101,7 +1137,10 @@
         "id",
         "text",
         "source",
-        "status"
+        "first_touch",
+        "paid_off",
+        "status",
+        "evidence_sentence_ids"
       ],
       "title": "PromiseItem",
       "type": "object"
@@ -1132,7 +1171,8 @@
       },
       "required": [
         "provider",
-        "model"
+        "model",
+        "prompt_version"
       ],
       "title": "Provenance",
       "type": "object"
@@ -1285,7 +1325,9 @@
         "end",
         "text",
         "lang",
-        "timing"
+        "timing",
+        "role",
+        "section_id"
       ],
       "title": "Sentence",
       "type": "object"
@@ -1328,7 +1370,8 @@
       "required": [
         "family",
         "label",
-        "share"
+        "share",
+        "value"
       ],
       "title": "Signal",
       "type": "object"
@@ -1459,7 +1502,9 @@
         "job_id",
         "stage",
         "status",
-        "message"
+        "message",
+        "progress",
+        "provenance"
       ],
       "title": "StageEvent",
       "type": "object"
@@ -1561,10 +1606,14 @@
       },
       "required": [
         "title",
+        "candidate_titles",
+        "thumbnail_text",
         "category",
         "language",
         "input_mode",
-        "duration_seconds"
+        "duration_seconds",
+        "source_url",
+        "channel"
       ],
       "title": "VideoMeta",
       "type": "object"

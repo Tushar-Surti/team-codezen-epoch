@@ -39,6 +39,18 @@ def health() -> dict:
     return {"ok": True, "product": PRODUCT_NAME}
 
 
+@app.get("/api/samples")
+def samples() -> list[dict]:
+    """Authored sample scripts for demos (clearly labelled as samples)."""
+    out = []
+    for p in sorted((ROOT / "fixtures" / "samples").glob("*.json")):
+        import json
+
+        s = json.loads(p.read_text())
+        out.append({k: s.get(k) for k in ("id", "label", "note", "title", "category", "thumbnail_text", "script")})
+    return out
+
+
 @app.get("/api/analyses")
 def list_analyses() -> list[dict]:
     return store.list()

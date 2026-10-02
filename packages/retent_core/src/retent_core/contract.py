@@ -25,7 +25,7 @@ INTRO_SECONDS = 30.0
 
 
 class _Model(BaseModel):
-    model_config = ConfigDict(extra="forbid", use_enum_values=True)
+    model_config = ConfigDict(extra="forbid", use_enum_values=True, json_schema_serialization_defaults_required=True)
 
 
 # ── Enumerations ──────────────────────────────────────────────────────────────
