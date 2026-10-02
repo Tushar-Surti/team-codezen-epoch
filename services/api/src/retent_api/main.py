@@ -304,6 +304,92 @@ def media_file(analysis_id: str):
     return FileResponse(path)
 
 
+RETENTION_DIR = ROOT / "data" / "raw" / "d2"
+
+
+@app.post("/api/retention/import")
+async def retention_import(image: UploadFile = File(...), analysis_id: str | None = Form(None),
+                           y_top: float = Form(1.0), y_bottom: float = Form(0.0)) -> dict:
+    """Real retention check: a YouTube Studio retention screenshot → actual curve → compared with our prediction."""
+    import io
+    import json
+
+    import numpy as np
+    from PIL import Image
+
+    from retent_ml.digitize import DigitizeError, digitize, overlay, record
+
+    raw = await image.read()
+    if len(raw) > 15_000_000:
+        raise HTTPException(413, "That image is over 15 MB.")
+    try:
+        img = Image.open(io.BytesIO(raw))
+        res = digitize(img, y_top=y_top, y_bottom=y_bottom)
+    except DigitizeError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(422, f"Couldn't read that image: {str(exc)[:120]}") from exc
+
+    rid = uuid.uuid4().hex[:10]
+    RETENTION_DIR.mkdir(parents=True, exist_ok=True)
+    (RETENTION_DIR / "uploads").mkdir(exist_ok=True)
+    (RETENTION_DIR / "overlays").mkdir(exist_ok=True)
+    img_path = RETENTION_DIR / "uploads" / f"{rid}.png"
+    img.convert("RGB").save(img_path)
+    overlay(img, res).save(RETENTION_DIR / "overlays" / f"{rid}.png")
+
+    actual = np.array(res.points, dtype=float)
+    out: dict = {"id": rid, "actual": res.points, "coverage": res.coverage, "warnings": res.warnings,
+                 "overlay_url": f"/api/retention/overlay/{rid}.png", "comparison": None}
+    a = store.get(analysis_id) if analysis_id else None
+    if a is not None:
+        pred = np.array([b.retention for b in a.curve.bins], dtype=float)
+        dur = a.metrics.duration_seconds
+        xs = (np.arange(100) + 0.5) / 100 * dur
+        at30 = lambda v: float(np.interp(min(30.0, dur), np.concatenate([[0.0], xs]), np.concatenate([[1.0], v])))  # noqa: E731
+        ra, rp = actual.argsort().argsort(), pred.argsort().argsort()
+        out["comparison"] = {
+            "analysis_id": a.id, "title": a.meta.title, "duration": dur, "predicted": pred.round(4).tolist(),
+            "mae_pts": round(float(np.abs(pred - actual).mean() * 100), 1),
+            "shape": round(float(np.corrcoef(ra, rp)[0, 1]), 3),
+            "intro_actual": round(at30(actual), 4), "intro_pred": round(at30(pred), 4),
+            "apv_actual": round(float(actual.mean()), 4), "apv_pred": round(float(pred.mean()), 4),
+        }
+    rec = record(res, image=img_path, source_url=None, video_id=None, duration=a.metrics.duration_seconds if a else None)
+    rec.update(id=rid, source="upload", analysis_id=a.id if a else None, comparison=out["comparison"])
+    (RETENTION_DIR / f"{rid}.json").write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
+    return out
+
+
+@app.get("/api/retention/summary")
+def retention_summary() -> dict:
+    """Every Studio screenshot checked against a prediction (real absolute retention)."""
+    import json
+
+    import numpy as np
+
+    rows = []
+    for f in sorted(RETENTION_DIR.glob("*.json")):
+        r = json.loads(f.read_text(encoding="utf-8"))
+        if r.get("comparison"):
+            rows.append({"id": r["id"], **{k: r["comparison"][k] for k in ("title", "mae_pts", "shape", "apv_actual", "apv_pred")}})
+    out: dict = {"n": len(rows), "checks": rows}
+    if rows:
+        out["mean_mae_pts"] = round(float(np.mean([x["mae_pts"] for x in rows])), 1)
+        out["mean_shape"] = round(float(np.mean([x["shape"] for x in rows])), 3)
+    return out
+
+
+@app.get("/api/retention/overlay/{name}")
+def retention_overlay(name: str):
+    from fastapi.responses import FileResponse
+
+    path = (RETENTION_DIR / "overlays" / name).resolve()
+    if path.parent != (RETENTION_DIR / "overlays").resolve() or not path.exists():
+        raise HTTPException(404, "Not found")
+    return FileResponse(path, media_type="image/png")
+
+
 @app.post("/api/analyze", response_model=JobAccepted)
 async def analyze(req: AnalyzeRequest) -> JobAccepted:
     if not req.script and not req.source_url:

@@ -13,7 +13,7 @@ const NAV = [
   { href: "/lab", label: "Accuracy", icon: FlaskConical, match: ["/lab"] },
   { href: "/blind", label: "Blind test", icon: EyeOff, match: ["/blind"] },
   { href: "/xray", label: "X-Ray", icon: ScanSearch, match: ["/xray"] },
-  { href: "/import", label: "Import", icon: ImageUp, match: ["/import"] },
+  { href: "/import", label: "Studio check", icon: ImageUp, match: ["/import"] },
 ];
 
 /** Navy cover-stock rail. The two brass brads are the script binding, and the brand's only ornament. */

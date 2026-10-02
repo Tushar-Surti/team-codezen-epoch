@@ -17,11 +17,11 @@ Update this file whenever a task changes state; it is the single source of truth
 | 2. Model & evaluation | 10 | 2 | 5 |
 | 3. Core loop | 12 | 0 | 1 |
 | 4. Differentiators | 4 | 4 | 6 |
-| 5. Validation & discovery | 2 | 0 | 3 |
+| 5. Validation & discovery | 3 | 0 | 2 |
 | 6. Finish | 2 | 1 | 5 |
 | 7. Pitch kit | 1 | 2 | 3 |
 | 8. Showstoppers | 1 | 0 | 4 |
-| **Total** | **42** | **18** | **28** |
+| **Total** | **43** | **18** | **27** |
 
 ---
 
@@ -121,7 +121,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | E1 | Validation Lab (renders `eval_report.json`) | You + Claude | ✅ | `/lab`: baselines with CIs, by category, top signals, best/typical/worst gallery, limits |
 | E2 | Blind test: any public URL → predict → reveal actual | You + Claude | ✅ | `/blind`: out-of-fold blind prediction, then YouTube's curve sweeps in, with scores |
 | E3 | Channel X-Ray | You + Claude | ⬜ | |
-| E4 | Retention Import (screenshot → curve → score) | You | ⬜ | Digitizer from Phase 0 |
+| E4 | Retention Import (screenshot → curve → score) | You | ✅ | /import page + `POST /api/retention/import`; Lab shows the summary once real screenshots are added |
 | E5 | Category Norms page | You + Claude | ⬜ | Waits on `norms.json` |
 
 ## Phase 6: Finish

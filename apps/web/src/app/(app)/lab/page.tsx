@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { InterestChart } from "@/components/lab/InterestChart";
+import { API_URL } from "@/lib/api";
 import { CELL_LABEL, FEATURE_LABEL, METHOD_LABEL, evalApi, type EvalVideo, type Interval } from "@/lib/eval";
 
 const METRICS = [
@@ -49,8 +50,14 @@ function Gallery({ ids, label, videos }: { ids: string[]; label: string; videos:
   );
 }
 
+type StudioSummary = { n: number; mean_mae_pts?: number; mean_shape?: number; checks: { id: string; title: string; mae_pts: number; shape: number }[] };
+
 export default function LabPage() {
   const { data: r, error } = useQuery({ queryKey: ["eval"], queryFn: evalApi.summary });
+  const { data: studio } = useQuery({
+    queryKey: ["studio-summary"],
+    queryFn: () => fetch(`${API_URL}/api/retention/summary`).then((x) => x.json() as Promise<StudioSummary>),
+  });
 
   const gallery = useMemo(() => {
     if (!r) return null;
@@ -159,6 +166,20 @@ export default function LabPage() {
               these videos. Language models are good at reading a script; predicting where real viewers rewatch or tune out
               needs a model trained on what viewers actually did.
             </p>
+          </section>
+        )}
+
+        {studio && studio.n > 0 && (
+          <section aria-labelledby="studio" className="rounded-[8px] border border-rule bg-paper-raised p-5">
+            <h2 id="studio" className="text-[17px] font-[640]">Checked against real YouTube Studio retention</h2>
+            <p className="mt-1 max-w-[86ch] text-[14px] text-ink-2">
+              Real absolute retention from Studio screenshots, each compared with the prediction for that video (see Studio check).
+            </p>
+            <div className="mt-3 flex flex-wrap gap-8">
+              <p><span className="tnum text-[28px] font-[650] wdth-wide">{studio.n}</span> <span className="text-[13px] text-ink-3">videos checked</span></p>
+              <p><span className="tnum text-[28px] font-[650] wdth-wide">{studio.mean_mae_pts?.toFixed(1)} pts</span> <span className="text-[13px] text-ink-3">average gap</span></p>
+              <p><span className="tnum text-[28px] font-[650] wdth-wide">{(studio.mean_shape ?? 0) >= 0 ? "+" : "−"}{Math.abs(studio.mean_shape ?? 0).toFixed(2)}</span> <span className="text-[13px] text-ink-3">shape match</span></p>
+            </div>
           </section>
         )}
 

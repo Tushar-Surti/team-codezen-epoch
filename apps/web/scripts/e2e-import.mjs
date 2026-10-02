@@ -1,0 +1,12 @@
+import { chromium } from "@playwright/test";
+const [, , file] = process.argv;
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await page.goto("http://localhost:3000/import", { waitUntil: "networkidle" });
+await page.locator("select").selectOption("sample-hinglish-tech");
+await page.locator('input[type="file"]').setInputFiles(file);
+await page.getByRole("button", { name: /Compare with the prediction/ }).click();
+await page.waitForSelector("text=Average gap", { timeout: 60000 });
+await page.waitForTimeout(1800);
+await page.screenshot({ path: "../../.impeccable/review/import-1.png" });
+await browser.close();
