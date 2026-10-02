@@ -1,8 +1,8 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Check, Copy, Download, Film, Loader2, Scissors } from "lucide-react";
+import { Check, Copy, Download, Film, Link2, Loader2, Scissors } from "lucide-react";
 import { motion } from "motion/react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -162,7 +162,43 @@ function ShortsFinder() {
     if (!id && list?.length) setId((list.find((x) => x.input_mode === "url") ?? list[0]).id);
   }, [list, id]);
 
-  const find = useMutation({ mutationFn: () => post<ShortsResult>("/api/shorts", { analysis_id: id, n: 4 }) });
+  const qc = useQueryClient();
+  const find = useMutation({
+    mutationFn: (analysisId?: string) => post<ShortsResult>("/api/shorts", { analysis_id: analysisId ?? id, n: 4 }),
+  });
+
+  // Paste a YouTube link: analyze it (same pipeline as New → Published video), then find Shorts.
+  const [url, setUrl] = useState("");
+  const [category, setCategory] = useState<"tech" | "education" | "vlog">("vlog");
+  const [stage, setStage] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const urlOk = /(youtu\.be\/|youtube\.com\/(watch\?v=|shorts\/|live\/|embed\/))[A-Za-z0-9_-]{11}/.test(url);
+  async function fromLink() {
+    setLinkError(null);
+    find.reset();
+    setStage("Opening the video on YouTube");
+    try {
+      const job = await api.analyze({ title: "", category, source_url: url.trim(), engine: "auto" });
+      api.events(
+        job.job_id,
+        (ev) => setStage(ev.message),
+        async (err) => {
+          if (err) {
+            setStage(null);
+            setLinkError(err);
+            return;
+          }
+          setStage("Finding the best moments");
+          await qc.invalidateQueries({ queryKey: ["analyses"] });
+          setId(job.analysis_id);
+          find.mutate(job.analysis_id, { onSettled: () => setStage(null) });
+        },
+      );
+    } catch (e) {
+      setStage(null);
+      setLinkError((e as Error).message);
+    }
+  }
   const r = find.data;
   const dur = r ? Math.max(...r.clips.map((c) => c.end), 1) : 1;
   const selected = list?.find((x) => x.id === id);
@@ -179,6 +215,53 @@ function ShortsFinder() {
       </header>
 
       <div className="px-8 py-6">
+        <div className="max-w-[980px] rounded-[8px] border border-rule bg-paper-raised p-4">
+          <label className="block">
+            <span className="mb-1.5 flex items-center gap-2 text-[13.5px] font-[620]">
+              <Link2 size={15} aria-hidden /> Paste a YouTube link
+            </span>
+            <div className="flex flex-wrap gap-3">
+              <input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && urlOk && !stage && fromLink()}
+                placeholder="https://www.youtube.com/watch?v=…"
+                className="min-w-[320px] flex-1 rounded-[7px] border border-rule-strong bg-paper px-3 py-2 text-[14.5px] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 focus:border-ink focus:shadow-[0_0_0_3px_var(--rev-blue-paper)]"
+              />
+              <div role="radiogroup" aria-label="Category" className="inline-flex rounded-[7px] border border-rule-strong bg-paper p-0.5">
+                {(["tech", "education", "vlog"] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    role="radio"
+                    aria-checked={category === c}
+                    onClick={() => setCategory(c)}
+                    className={clsx("rounded-[5px] px-3 py-1.5 text-[13px] font-[560] capitalize transition-colors",
+                      category === c ? "bg-ink text-paper" : "text-ink-2 hover:bg-paper-sunk")}
+                  >
+                    {c === "tech" ? "Tech review" : c}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={fromLink}
+                disabled={!urlOk || !!stage}
+                className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2 text-[14.5px] font-[620] text-paper hover:bg-cover disabled:opacity-40"
+              >
+                {stage ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Film size={16} aria-hidden />}
+                Make Shorts
+              </button>
+            </div>
+          </label>
+          {stage && <p className="mt-2 text-[13px] text-ink-2" aria-live="polite">{stage}…</p>}
+          {linkError && <p className="mt-2 text-[13px] text-pen-text">{linkError}</p>}
+          {!stage && !linkError && (
+            <p className="mt-2 text-[12.5px] text-ink-3">About 30–60 seconds: fetch, transcribe, predict, then pick the Shorts.</p>
+          )}
+        </div>
+
+        <p className="mt-5 mb-2 text-[12.5px] font-[600] text-ink-3">Or pick a video you’ve already analyzed</p>
         <div className="flex max-w-[980px] flex-wrap items-end gap-3">
           <label className="min-w-[320px] flex-1">
             <span className="mb-1.5 block text-[13.5px] font-[600]">Video</span>
@@ -199,7 +282,7 @@ function ShortsFinder() {
             </select>
           </label>
           <button
-            onClick={() => find.mutate()}
+            onClick={() => find.mutate(undefined)}
             disabled={!id || find.isPending}
             className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2.5 text-[14.5px] font-[620] text-paper hover:bg-cover disabled:opacity-40"
           >

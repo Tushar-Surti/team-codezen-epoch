@@ -1,0 +1,15 @@
+import { chromium } from "@playwright/test";
+const [, , url = "https://www.youtube.com/watch?v=hZ5mobRcXAU"] = process.argv;
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await page.goto("http://localhost:3000/shorts", { waitUntil: "networkidle" });
+await page.getByPlaceholder("https://www.youtube.com/watch?v=…").fill(url);
+await page.getByRole("radio", { name: "education" }).click();
+await page.getByRole("button", { name: /Make Shorts/ }).click();
+await page.waitForTimeout(3000);
+await page.screenshot({ path: "../../.impeccable/review/shorts-link-progress.png" });
+await page.waitForSelector("text=Short 1", { timeout: 180000 });
+await page.waitForTimeout(1500);
+await page.screenshot({ path: "../../.impeccable/review/shorts-link-done.png", fullPage: false });
+console.log("done");
+await browser.close();
