@@ -116,8 +116,12 @@ def edited_semantic(semantic, ops: list[EditOp]):
 
 
 def run(sentences: list[TimedSentence], title: str, thumbnail_text: str | None, category: str,
-        model: InterestModel | None = None, payoff_id: str | None = None, semantic=None) -> SimResult:
-    fs = build_features(sentences, title, thumbnail_text, semantic=semantic)
+        model: InterestModel | None = None, payoff_id: str | None = None, semantic=None,
+        tail: float = 0.0) -> SimResult:
+    """`tail` is real video time after the last spoken line (outro, end screen); it keeps the
+    timeline aligned with YouTube's for published videos and is preserved across edits."""
+    end = max(x.end for x in sentences)
+    fs = build_features(sentences, title, thumbnail_text, semantic=semantic, duration=end + tail if tail else None)
     pred = predict(fs, category, model)
     payoff = next((s.start for s in sentences if s.id == payoff_id), None) if payoff_id else None
     return SimResult(sentences, fs, pred, summarize(pred), payoff)

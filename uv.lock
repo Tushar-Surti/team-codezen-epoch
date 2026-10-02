@@ -1102,6 +1102,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "python-dotenv" },
     { name = "retent-core" },
+    { name = "retent-ml" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1110,6 +1111,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "retent-core", editable = "packages/retent_core" },
+    { name = "retent-ml", editable = "ml" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
 ]
 

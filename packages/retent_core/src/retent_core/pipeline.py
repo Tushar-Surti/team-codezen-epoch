@@ -89,14 +89,15 @@ def analyze_sentences(
     """`semantic` is the LLM read of the script (retent_core.semantic.Semantic) or None for keyword cues.
     `writer(flags, fixes, payoff_id) -> fixes` fills in fix text (an LLM call) before fixes are simulated."""
     model = model or default_model()
-    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, semantic=semantic)
+    tail = max(0.0, meta.duration_seconds - max(x.end for x in sents)) if timing == "measured" and meta.duration_seconds else 0.0
+    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, semantic=semantic, tail=tail)
     fs, pred = base.features, base.prediction
     flags, fixes, promises, loops = build_flags(fs, pred, meta.title, meta.category)
 
     payoff_id = None
     if promises and promises[0].paid_off is not None:
         payoff_id = next((s.id for s in sents if s.start == promises[0].paid_off), None)
-    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, payoff_id, semantic=semantic)
+    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, payoff_id, semantic=semantic, tail=tail)
 
     warnings_extra: list[Warning_] = []
     if writer is not None and fixes:
@@ -110,7 +111,7 @@ def analyze_sentences(
     for fx in fixes:
         try:
             after = run(apply_ops(sents, fx.ops), meta.title, meta.thumbnail_text, meta.category, model, payoff_id,
-                        semantic=edited_semantic(semantic, fx.ops))
+                        semantic=edited_semantic(semantic, fx.ops), tail=tail)
             simulated.append(fx.model_copy(update={"delta": delta(base, after)}))
         except ValueError:
             simulated.append(fx)

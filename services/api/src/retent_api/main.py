@@ -19,7 +19,7 @@ from retent_core.contract import (
     Analysis, AnalyzeRequest, InputMode, JobAccepted, Metrics, SimulateRequest, Simulation, Stage, VideoMeta,
 )
 from retent_core.engine import load_baselines
-from retent_core.pipeline import analyze_sentences, sentences_from_script
+from retent_core.pipeline import analyze_sentences, sentences_from_captions, sentences_from_script
 from retent_core.llm import LLMError
 from retent_core.contract import EditOp, EditOpKind
 from retent_core.semantic import Semantic, read_script, write_fixes, write_hooks
@@ -143,15 +143,69 @@ async def _run_script_job(job, req: AnalyzeRequest, analysis_id: str) -> None:
         await job.finish(str(exc))
 
 
+async def _run_url_job(job, req: AnalyzeRequest, analysis_id: str) -> None:
+    from retent_api import youtube
+
+    try:
+        await job.emit(Stage.ingest, "start", "Opening the video on YouTube")
+        vid = youtube.video_id(req.source_url or "")
+        info = await asyncio.to_thread(youtube.fetch_info, vid)
+        heat = info.get("heatmap") or []
+        await job.emit(Stage.ingest, "done", f"{info.get('title', '')[:70]} · {(info.get('duration') or 0) / 60:.1f} min · "
+                       + ("has YouTube's Most replayed curve" if len(heat) >= 50 else "no Most replayed curve on this one"), 0.12)
+
+        loop = asyncio.get_running_loop()
+        def whisper_note() -> None:
+            asyncio.run_coroutine_threadsafe(
+                job.emit(Stage.transcribe, "progress", "Captions blocked here, transcribing the audio with Groq Whisper", 0.2), loop)
+        await job.emit(Stage.transcribe, "start", "Getting the transcript", 0.15)
+        segs, source, lang = await asyncio.to_thread(youtube.transcript, info, whisper_note)
+        sents = sentences_from_captions(segs)
+        label = {"manual": "creator captions", "auto": "YouTube captions", "asr": "Whisper transcript"}[source]
+        await job.emit(Stage.transcribe, "done", f"{len(sents)} lines from the {label}", 0.3)
+
+        title = info.get("title") or "Untitled video"
+        await job.emit(Stage.read, "start", "Reading for hooks, promises and loops", 0.35)
+        semantic: Semantic | None = None
+        try:
+            semantic = await asyncio.to_thread(read_script, sents, title, None, req.category, req.engine)
+            await job.emit(Stage.read, "done", f"Read by {semantic.provenance.provider.title()} · {len(semantic.sections)} sections, "
+                           f"{len(semantic.loops)} loops", 0.5, provenance=semantic.provenance)
+        except LLMError as exc:
+            await job.emit(Stage.read, "done", f"No language model available, using keyword rules ({str(exc)[:80]})", 0.5)
+
+        await job.emit(Stage.predict, "start", "Predicting the retention curve", 0.55)
+        text = " ".join(s.text for s in sents[:80])
+        meta = VideoMeta(title=title, category=req.category, language=req.language or detect_language(text),
+                         input_mode=InputMode.url, duration_seconds=float(info["duration"]),
+                         source_url=f"https://www.youtube.com/watch?v={vid}", channel=info.get("channel"))
+        writer = (lambda flags, fixes, payoff_id: write_fixes(sents, title, flags, fixes, req.engine, payoff_id)[0])
+        await job.emit(Stage.fix, "start", "Writing fixes and simulating each one", 0.7)
+        analysis = await asyncio.to_thread(analyze_sentences, sents, meta, engine=req.engine, analysis_id=analysis_id,
+                                           timing="measured", semantic=semantic, writer=writer,
+                                           chapters=info.get("chapters") or None)
+        await job.emit(Stage.explain, "done", f"{len(analysis.flags)} drop risks explained", 0.9)
+        await job.emit(Stage.fix, "done", f"{len(analysis.fixes)} fixes simulated", 0.98)
+        extra: dict = {"_semantic": semantic.to_json()} if semantic else {}
+        if len(heat) >= 50:
+            extra["_heatmap"] = heat
+        store.put(analysis, extra=extra or None)
+        await job.finish()
+    except Exception as exc:  # noqa: BLE001 - surface the message to the client
+        await job.emit(Stage.ingest, "error", str(exc))
+        await job.finish(str(exc))
+
+
 @app.post("/api/analyze", response_model=JobAccepted)
 async def analyze(req: AnalyzeRequest) -> JobAccepted:
     if not req.script and not req.source_url:
         raise HTTPException(422, "Send a script, or a public YouTube URL.")
-    if req.source_url and not req.script:
-        raise HTTPException(501, "URL analysis is not wired yet. Paste the script for now.")
     analysis_id = uuid.uuid4().hex[:12]
     job = jobs.create(analysis_id)
-    asyncio.create_task(_run_script_job(job, req, analysis_id))
+    if req.source_url and not req.script:
+        asyncio.create_task(_run_url_job(job, req, analysis_id))
+    else:
+        asyncio.create_task(_run_script_job(job, req, analysis_id))
     return JobAccepted(job_id=job.id, analysis_id=analysis_id)
 
 
@@ -187,17 +241,24 @@ def hooks(body: dict) -> dict:
                                     int(body.get("n", 5)))
     except LLMError as exc:
         raise HTTPException(503, f"No language model available to write hooks: {exc}") from exc
-    before = run(sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=semantic)
+    tail = _tail(a)
+    before = run(sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=semantic, tail=tail)
     out = []
     for h in written:
         ops = [EditOp(op=EditOpKind.insert, after_sentence_id="", new_text=h["text"], note="hook")]
         after = run(apply_ops(sents, ops), a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id,
-                    semantic=edited_semantic(semantic, ops))
+                    semantic=edited_semantic(semantic, ops), tail=tail)
         out.append({**h, "delta": delta(before, after).model_dump(),
                     "intro_retention": round(after.metrics.intro_retention, 4)})
     out.sort(key=lambda h: (h["delta"]["intro_retention"], h["delta"]["viewers_at_payoff"] or 0), reverse=True)
     return {"analysis_id": a.id, "current_opening": a.sentences[0].text if a.sentences else "",
             "current_intro_retention": a.metrics.intro_retention, "provenance": prov.model_dump(), "hooks": out}
+
+
+def _tail(a: Analysis) -> float:
+    if not a.sentences or a.sentences[0].timing != "measured":
+        return 0.0
+    return max(0.0, a.meta.duration_seconds - max(s.end for s in a.sentences))
 
 
 @app.post("/api/simulate", response_model=Simulation)
@@ -212,12 +273,14 @@ def simulate(req: SimulateRequest) -> Simulation:
     sents = [TimedSentence(s.id, s.text, s.start, s.end, s.lang) for s in a.sentences]
     ops = [op for fx in a.fixes if fx.id in req.fix_ids for op in fx.ops]
     payoff_id = a.metrics.payoff_sentence_id
-    before = run(sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=semantic)
+    tail = _tail(a)
+    before = run(sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=semantic, tail=tail)
     after_sents = apply_ops(sents, ops)
     after_sem = edited_semantic(semantic, ops)
-    after = run(after_sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=after_sem)
-    edited = analyze_sentences(after_sents, a.meta, engine=a.engine, analysis_id=a.id, timing=a.sentences[0].timing,
-                               semantic=after_sem)
+    after = run(after_sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=after_sem,
+                tail=tail)
+    edited = analyze_sentences(after_sents, a.meta.model_copy(update={"duration_seconds": max(x.end for x in after_sents) + tail}),
+                               engine=a.engine, analysis_id=a.id, timing=a.sentences[0].timing, semantic=after_sem)
     return Simulation(
         analysis_id=a.id, fix_ids=req.fix_ids, curve=edited.curve,
         metrics=Metrics(**{**edited.metrics.model_dump(), "payoff_time": after.payoff_time,

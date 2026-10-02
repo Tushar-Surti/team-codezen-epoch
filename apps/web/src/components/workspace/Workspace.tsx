@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
-import { useEffect, useRef } from "react";
+import clsx from "clsx";
+import { useEffect, useRef, useState } from "react";
 
 import { api } from "@/lib/api";
 import { revision } from "@/lib/revisions";
@@ -15,6 +16,7 @@ import { FixQueue } from "./FixQueue";
 import { Lanes } from "./Lanes";
 import { MetricsLedger } from "./MetricsLedger";
 import { ProjectBar } from "./ProjectBar";
+import { YouTubeCheck } from "./YouTubeCheck";
 import { ScriptPage } from "./ScriptPage";
 
 /** Re-simulate the working revision whenever its set of fixes changes. */
@@ -44,6 +46,13 @@ function useDraftSimulation(analysisId: string) {
 
 export function Workspace({ id }: { id: string }) {
   const { data: analysis, error, isLoading } = useQuery({ queryKey: ["analysis", id], queryFn: () => api.get(id) });
+  const { data: actual } = useQuery({
+    queryKey: ["actual", id],
+    queryFn: () => api.actual(id),
+    enabled: !!analysis && analysis.meta.input_mode === "url",
+    retry: false,
+  });
+  const [view, setView] = useState<"retention" | "youtube">("retention");
   const { reset, selectedFlagId, drafts, activeDraft } = useWorkspace();
   const exportSheet = useExportSheet();
 
@@ -69,7 +78,8 @@ export function Workspace({ id }: { id: string }) {
 
   const draft = drafts.find((d) => d.key === activeDraft && d.key !== "white") ?? null;
   const sim = draft?.simulation ?? null;
-  const focusFlag = analysis.flags.find((f) => f.id === selectedFlagId) ?? analysis.flags[0] ?? null;
+  const top = analysis.flags[0] && analysis.flags[0].viewers_lost >= 5 ? analysis.flags[0] : null;
+  const focusFlag = analysis.flags.find((f) => f.id === selectedFlagId) ?? top;
   const uncalibrated = analysis.warnings.find((w) => w.code === "uncalibrated");
 
   return (
@@ -81,8 +91,26 @@ export function Workspace({ id }: { id: string }) {
         <div className="flex min-h-0 min-w-0 flex-col overflow-y-auto xl:overflow-hidden">
           <section className="shrink-0 px-6 pt-4" aria-label="Predicted retention curve">
             <div className="flex items-baseline justify-between gap-4">
-              <h2 className="text-[15px] font-[620]">Predicted retention</h2>
-              <p className="flex items-center gap-4 text-[12px] text-ink-3">
+              <div className="flex items-baseline gap-3">
+                <h2 className="text-[15px] font-[620]">{view === "youtube" ? "Blind check against YouTube" : "Predicted retention"}</h2>
+                {actual && (
+                  <div role="tablist" aria-label="Curve view" className="inline-flex rounded-[6px] border border-rule-strong p-0.5 text-[12.5px]">
+                    {(["retention", "youtube"] as const).map((v) => (
+                      <button
+                        key={v}
+                        role="tab"
+                        aria-selected={view === v}
+                        onClick={() => setView(v)}
+                        className={clsx("rounded-[4px] px-2.5 py-1 font-[560] transition-colors duration-150",
+                          view === v ? "bg-ink text-paper" : "text-ink-2 hover:bg-paper-sunk")}
+                      >
+                        {v === "retention" ? "Retention" : "vs YouTube"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className={clsx("flex items-center gap-4 text-[12px] text-ink-3", view === "youtube" && "invisible")}>
                 <span className="flex items-center gap-1.5"><span className="h-[2px] w-3.5 bg-ink" />White draft</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-3.5 bg-ink/10" />likely range</span>
                 {draft?.simulation && (
@@ -94,7 +122,11 @@ export function Workspace({ id }: { id: string }) {
               </p>
             </div>
             <div className="h-[clamp(220px,30vh,340px)]">
-              <CurvePanel analysis={analysis} focusFlag={focusFlag} />
+              {view === "youtube" && actual ? (
+                <YouTubeCheck analysis={analysis} actual={actual} />
+              ) : (
+                <CurvePanel analysis={analysis} focusFlag={focusFlag} />
+              )}
             </div>
             {uncalibrated && <p className="mt-1 max-w-[80ch] text-[12px] text-ink-3">{uncalibrated.message}</p>}
             <CurveTable analysis={analysis} sim={sim} draftKey={draft?.key ?? null} />

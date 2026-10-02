@@ -183,7 +183,7 @@ export function FixQueue({ analysis }: { analysis: Analysis }) {
                 <SeverityMark level={flag.severity} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] leading-[1.25] font-[620] text-ink">
-                    {idx === 0 && <span className="mr-1.5 text-pen-text">Biggest drop.</span>}
+                    {idx === 0 && flag.viewers_lost >= 5 && <span className="mr-1.5 text-pen-text">Biggest drop.</span>}
                     {flag.title}
                   </span>
                   <span className={clsx("mt-1 block text-[13px] leading-snug text-ink-2", !selected && "line-clamp-2")}>{flag.detail}</span>

@@ -58,6 +58,7 @@ export default function NewAnalysisPage() {
   });
   const [mode, setMode] = useState<"script" | "url" | "video">("script");
   const [script, setScript] = useState("");
+  const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [thumb, setThumb] = useState("");
   const [category, setCategory] = useState<"tech" | "education" | "vlog">("tech");
@@ -70,14 +71,17 @@ export default function NewAnalysisPage() {
   const words = useMemo(() => wordCount(script), [script]);
   const secs = useMemo(() => estimateSeconds(script, lang), [script, lang]);
   const inScope = secs >= 300 && secs <= 900;
-  const canRun = mode === "script" && title.trim().length > 3 && words >= 120;
+  const urlOk = /(youtu\.be\/|youtube\.com\/(watch\?v=|shorts\/|live\/|embed\/))[A-Za-z0-9_-]{11}/.test(url);
+  const canRun = mode === "url" ? urlOk : mode === "script" && title.trim().length > 3 && words >= 120;
 
   async function run() {
     setError(null);
     setEvents([]);
     setRunning(true);
     try {
-      const job = await api.analyze({ title: title.trim(), category, script, thumbnail_text: thumb || null, engine });
+      const job = mode === "url"
+        ? await api.analyze({ title: "", category, source_url: url.trim(), engine })
+        : await api.analyze({ title: title.trim(), category, script, thumbnail_text: thumb || null, engine });
       // Show each stage long enough to read, even when the server finishes faster.
       let shown = Promise.resolve();
       const pace = (fn: () => void) => {
@@ -106,8 +110,8 @@ export default function NewAnalysisPage() {
     return (
       <div className="grid h-full place-items-center overflow-y-auto px-6 py-10">
         <div className="w-full">
-          <p className="mx-auto mb-2 max-w-[560px] truncate text-[13px] text-ink-3">{title}</p>
-          <StageProgress events={events} error={error} />
+          <p className="mx-auto mb-2 max-w-[560px] truncate text-[13px] text-ink-3">{mode === "url" ? url : title}</p>
+          <StageProgress events={events} error={error} mode={mode === "url" ? "url" : "script"} />
           {error && (
             <div className="mx-auto mt-4 max-w-[560px]">
               <button onClick={() => { setEvents([]); setRunning(false); }} className="text-[14px] font-[600] text-ink underline">
@@ -183,20 +187,37 @@ export default function NewAnalysisPage() {
                 )}
               </div>
             </div>
+          ) : mode === "url" ? (
+            <div className="flex flex-1 flex-col justify-center rounded-[6px] border border-rule bg-paper-raised p-8">
+              <label className="block">
+                <span className="mb-2 block text-[16px] font-[620]">Paste a public YouTube link</span>
+                <input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && canRun && run()}
+                  placeholder="https://www.youtube.com/watch?v=…"
+                  className="w-full rounded-[8px] border border-rule-strong bg-paper px-4 py-3 text-[16px] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 focus:border-ink focus:shadow-[0_0_0_3px_var(--rev-blue-paper)]"
+                />
+              </label>
+              <p className="mt-3 max-w-[64ch] text-[14px] text-ink-2">
+                Retent AI fetches the video, gets the transcript (YouTube captions, or Whisper when they’re blocked), predicts
+                the curve blind, and, when YouTube shows a “Most replayed” curve for the video, lets you reveal it next to the prediction.
+              </p>
+              <p className="mt-2 text-[12.5px] text-ink-3">Works best on 5–15 minute videos. About 20–40 seconds per video.</p>
+            </div>
           ) : (
             <div className="flex flex-1 flex-col items-start justify-center rounded-[6px] border border-dashed border-rule-strong p-8">
-              <p className="text-[16px] font-[620]">{mode === "url" ? "Published video analysis is next on the build list." : "Rough-cut upload is next on the build list."}</p>
+              <p className="text-[16px] font-[620]">Rough-cut upload is next on the build list.</p>
               <p className="mt-1 max-w-[52ch] text-[14px] text-ink-2">
-                {mode === "url"
-                  ? "It will fetch the captions of any public video, predict the curve blind, then show YouTube’s real “Most replayed” curve beside it."
-                  : "It will transcribe the cut with Whisper and add shot cuts, loudness and on-screen faces to the prediction."}{" "}
-                For now, paste the transcript under “Script or transcript”.
+                It will transcribe the cut with Whisper and add shot cuts, loudness and on-screen faces to the prediction.
+                For now, paste the transcript under “Script or transcript”, or analyze a published video.
               </p>
             </div>
           )}
         </section>
 
         <aside aria-label="Details" className="space-y-6">
+          {mode !== "url" && (<>
           <label className="block">
             <span className="mb-1.5 block text-[13.5px] font-[600]">Title</span>
             <input
@@ -218,6 +239,7 @@ export default function NewAnalysisPage() {
               className="w-full rounded-[7px] border border-rule-strong bg-paper-raised px-3 py-2 text-[14.5px] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 focus:border-ink focus:shadow-[0_0_0_3px_var(--rev-blue-paper)]"
             />
           </label>
+          </>)}
           <div>
             <span className="mb-1.5 block text-[13.5px] font-[600]">Category</span>
             <Segmented label="Category" value={category} onChange={setCategory} options={CATEGORIES} />
@@ -236,6 +258,9 @@ export default function NewAnalysisPage() {
             Predict the drop
             <ArrowRight size={17} className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
           </button>
+          {!canRun && mode === "url" && url.length > 0 && (
+            <p className="text-[12.5px] text-ink-3">That doesn’t look like a YouTube video link yet.</p>
+          )}
           {!canRun && mode === "script" && (
             <p className="text-[12.5px] text-ink-3">
               {title.trim().length <= 3 ? "Add the title first. " : ""}

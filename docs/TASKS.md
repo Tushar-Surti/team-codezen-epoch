@@ -16,12 +16,12 @@ Update this file whenever a task changes state; it is the single source of truth
 | 1. Data | 4 | 6 | 1 |
 | 2. Model & evaluation | 9 | 2 | 6 |
 | 3. Core loop | 12 | 0 | 1 |
-| 4. Differentiators | 1 | 4 | 9 |
+| 4. Differentiators | 2 | 4 | 8 |
 | 5. Validation & discovery | 2 | 0 | 3 |
 | 6. Finish | 2 | 1 | 5 |
 | 7. Pitch kit | 1 | 1 | 4 |
 | 8. Showstoppers | 0 | 0 | 5 |
-| **Total** | **37** | **17** | **34** |
+| **Total** | **38** | **17** | **33** |
 
 ---
 
@@ -102,7 +102,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | A1 | Upload `.txt / .docx / .srt / .vtt` | Claude | ⬜ | Paste works today |
 | A2 | Thumbnail image read by Claude vision; candidate titles | Claude | ⛔ | Thumbnail *text* field works today |
 | A3 | Video mode: Whisper, shot cuts, loudness, face, OCR | Claude | ⬜ | |
-| A4 | Public YouTube URL mode | Claude | ⬜ | Caption 429 → Whisper fallback |
+| A4 | Public YouTube URL mode | Claude | ✅ | Paste any link: yt-dlp details + Most replayed + chapters; captions or Groq Whisper fallback; ~20–40 s; "vs YouTube" reveal with live score |
 | C3 | Open-loop arcs | Claude | 🟡 | Lane works; LLM detection will find far more loops |
 | C4 | Redundancy map view (recurrence plot) | You + Claude | 🟡 | Data computed in every analysis; no UI yet |
 | C5 | Pacing lanes: words/min, fillers; video lanes | You + Claude | 🟡 | New-info lane only |
