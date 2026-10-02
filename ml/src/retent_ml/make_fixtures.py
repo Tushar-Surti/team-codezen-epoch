@@ -65,8 +65,12 @@ def from_record(path: Path) -> dict | None:
 
 
 def main() -> None:
+    import sys
+
     load_dotenv(ROOT / ".env")
     OUT.mkdir(parents=True, exist_ok=True)
+    samples_only = "--samples-only" in sys.argv
+    prev = json.loads((OUT / "index.json").read_text(encoding="utf-8")) if (OUT / "index.json").exists() else []
     index = []
     for p in sorted(SAMPLES.glob("*.json")):
         a = from_sample(p)
@@ -80,6 +84,9 @@ def main() -> None:
             cell = f"{r['category']}/{r['caption'].get('lang') or r['seed_lang']}"
             if len(picked.setdefault(cell, [])) < 2:
                 picked[cell].append(p)
+    if samples_only:
+        index += [row for row in prev if row["kind"] == "public"]
+        picked = {}
     for p in [x for group in picked.values() for x in group]:
         a = from_record(p)
         if a:

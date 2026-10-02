@@ -116,6 +116,14 @@ def analyze_sentences(
         except ValueError:
             simulated.append(fx)
 
+    # Never recommend an edit the model itself expects to hurt: keep the flag, drop the fix.
+    def helps(fx: Fix) -> bool:
+        d = fx.delta
+        return d is None or (d.viewers_at_payoff or 0) > 0 or d.intro_retention > 0.002 or d.watch_time_per_1000 > 5
+    dropped = {fx.id for fx in simulated if not helps(fx)}
+    simulated = [fx for fx in simulated if fx.id not in dropped]
+    flags = [f.model_copy(update={"fix_ids": [x for x in f.fix_ids if x not in dropped]}) for f in flags]
+
     mid = (fs.bin_edges[:-1] + fs.bin_edges[1:]) / 2
     curve = Curve(
         bins=[CurveBin(index=i, t=round(float(mid[i]), 2), retention=round(float(pred.retention[i]), 4),

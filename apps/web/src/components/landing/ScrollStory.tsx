@@ -112,7 +112,7 @@ export function ScrollStory({ analysis, sim }: Props) {
 
   return (
     <section ref={root} className="relative h-[320vh]" aria-label="How Retent AI works">
-      <div className="sticky top-0 flex h-dvh items-center">
+      <div className="sticky top-14 flex h-[calc(100dvh-56px)] items-center">
         <div className="mx-auto grid w-full max-w-[1240px] grid-cols-1 items-center gap-10 px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:px-10">
           <ol className="space-y-8">
             {STEPS.map((s, i) => (

@@ -62,7 +62,8 @@ def load_dataset() -> list[dict]:
             continue
         fs = build_features(sents, r["title"], duration=float(r["duration"]))
         y = heat_bins(r["heatmap"], fs.bin_edges)
-        rows.append({"id": r["id"], "title": r["title"], "channel": r.get("channel") or r["id"],
+        rows.append({"lines": [(x.start, x.text) for x in sents],
+                     "id": r["id"], "title": r["title"], "channel": r.get("channel") or r["id"],
                      "cell": f"{r['category']}/{r['seed_lang']}", "duration": float(r["duration"]),
                      "text_kind": cap.get("kind"), "X": fs.bins.astype(np.float32), "y": y})
     return rows
@@ -81,14 +82,26 @@ def position_prior(rows: list[dict]) -> np.ndarray:
 
 
 SMOOTH = 7  # bins (~7% of the video): attention moves in stretches, not single seconds
+# Rare, well-understood events (asks, sponsor reads, wrap-ups, greetings, hooks, loops) appear too seldom
+# in the training videos for the model to price them, so the rules engine's estimate rides along as a
+# prior at this weight. The evaluation below scores exactly this blended model.
+EVENT_COLS = ("cta", "sponsor", "outro", "greeting", "hook", "loop_open", "loop_close")
+EVENT_IDX = [BIN_FEATURES.index(c) for c in EVENT_COLS]
+EXPERT_WEIGHT = 0.3
+_HEURISTIC = HeuristicInterest()
+
+
+def expert_prior(X: np.ndarray) -> np.ndarray:
+    return _HEURISTIC.contributions(X)[:, EVENT_IDX].sum(axis=1)
 
 
 class TwoPart:
-    def __init__(self, prior: np.ndarray, residual):
-        self.prior, self.residual = prior, residual
+    def __init__(self, prior: np.ndarray, residual, expert_weight: float = EXPERT_WEIGHT):
+        self.prior, self.residual, self.expert_weight = prior, residual, expert_weight
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        return _smooth(self.prior + self.residual.predict(X[:, TEXT_IDX]), SMOOTH)
+        raw = self.prior + self.residual.predict(X[:, TEXT_IDX]) + self.expert_weight * expert_prior(X)
+        return _smooth(raw, SMOOTH)
 
 
 def _spearman(a: np.ndarray, b: np.ndarray) -> float:
@@ -158,8 +171,58 @@ def cross_validate(rows: list[dict]) -> list[dict]:
     return results
 
 
+LLM_SEGMENTS = 20
+LLM_SAMPLE = 40
+LLM_SYSTEM = """You are an expert YouTube retention analyst. You get a video's transcript split into equal time
+segments. For each segment, predict how interested viewers will be relative to the rest of THIS video, the way
+YouTube's "Most replayed" graph shows it: 0 = viewers skip or tune out, 10 = the most rewatched, most gripping part.
+Use the whole 0-10 range. Return JSON only: {"scores": [one number per segment, in order]}."""
+
+
+def llm_scores(row: dict) -> np.ndarray | None:
+    """Zero-shot baseline: ask an LLM directly for the interest curve (no training, same transcript)."""
+    from retent_core.llm import LLMError, complete_json
+
+    dur = row["duration"]
+    edges = np.linspace(0, dur, LLM_SEGMENTS + 1)
+    parts = []
+    for k in range(LLM_SEGMENTS):
+        text = " ".join(t for (st, t) in row["lines"] if edges[k] <= st < edges[k + 1])
+        parts.append(f"Segment {k + 1} [{int(edges[k]) // 60}:{int(edges[k]) % 60:02d}]: {text[:900] or '(no speech)'}")
+    schema = {"type": "object", "properties": {"scores": {"type": "array", "items": {"type": "number"}}},
+              "required": ["scores"], "additionalProperties": False}
+    try:
+        data, _ = complete_json(role="read", engine="fast", system=LLM_SYSTEM,
+                                user=f"Title: {row['title']}\n\n" + "\n".join(parts), schema=schema,
+                                prompt_version="zeroshot-v1", effort="low")
+    except LLMError as exc:
+        print(f"  llm baseline skipped {row['id']}: {str(exc)[:80]}", flush=True)
+        return None
+    seg = np.array([float(v) for v in data.get("scores", [])][:LLM_SEGMENTS])
+    if len(seg) < LLM_SEGMENTS:
+        return None
+    # Segment scores → our 100 bins (linear between segment centres).
+    centres = (np.arange(LLM_SEGMENTS) + 0.5) / LLM_SEGMENTS
+    return np.interp((np.arange(N_BINS) + 0.5) / N_BINS, centres, seg)
+
+
+def add_llm_baseline(rows: list[dict], results: list[dict]) -> None:
+    """Score a fixed random sample of held-out videos with the LLM baseline (token budget)."""
+    rng = np.random.default_rng(11)
+    by_id = {r["id"]: r for r in rows}
+    sample = sorted(rng.choice([r["id"] for r in results], size=min(LLM_SAMPLE, len(results)), replace=False))
+    for i, vid in enumerate(sample):
+        pred = llm_scores(by_id[vid])
+        if pred is None:
+            continue
+        res = next(x for x in results if x["id"] == vid)
+        res["metrics"]["llm"] = _metrics(pred, by_id[vid]["y"])
+        res["series"]["llm"] = np.round(_z(pred), 3).tolist()
+        print(f"  llm baseline {i + 1}/{len(sample)} {vid} ρ={res['metrics']['llm']['spearman']:+.2f}", flush=True)
+
+
 def summarize(results: list[dict]) -> dict:
-    methods = list(results[0]["metrics"].keys())
+    methods = [m for m in results[0]["metrics"] if all(m in r["metrics"] for r in results)]
     out: dict = {"overall": {}, "by_cell": {}, "wins": {}}
     for m in methods:
         out["overall"][m] = {k: dict(zip(("mean", "lo", "hi"), _ci([r["metrics"][m][k] for r in results])))
@@ -174,10 +237,27 @@ def summarize(results: list[dict]) -> dict:
         if m != "model":
             out["wins"][m] = float(np.mean([r["metrics"]["model"]["spearman"] > r["metrics"][m]["spearman"]
                                             for r in results]))
+    sub = [r for r in results if "llm" in r["metrics"]]
+    if sub:
+        out["llm_head_to_head"] = {
+            "n": len(sub),
+            "model_name": "openai/gpt-oss-120b (Groq), zero-shot",
+            **{m: {k: dict(zip(("mean", "lo", "hi"), _ci([r["metrics"][m][k] for r in sub])))
+                   for k in ("spearman", "peaks_found", "dips_found")} for m in ("model", "llm", "position")},
+            "model_beats_llm": float(np.mean([r["metrics"]["model"]["spearman"] > r["metrics"]["llm"]["spearman"] for r in sub])),
+        }
     return out
 
 
 def main() -> None:
+    import argparse
+
+    from dotenv import load_dotenv
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--llm-baseline", action="store_true", help="Also score a sample with a zero-shot LLM (Groq).")
+    args = ap.parse_args()
+    load_dotenv(ROOT / ".env")
     rows = load_dataset()
     channels = len({r["channel"] for r in rows})
     print(f"{len(rows)} videos with text from {channels} channels", flush=True)
@@ -185,6 +265,8 @@ def main() -> None:
         raise SystemExit("Not enough data to train honestly yet (need ≥10 videos from ≥3 channels).")
 
     results = cross_validate(rows)
+    if args.llm_baseline:
+        add_llm_baseline(rows, results)
     summary = summarize(results)
     model = fit(rows)
     MODELS.mkdir(exist_ok=True)
@@ -195,7 +277,7 @@ def main() -> None:
     version = f"lgbm-{datetime.now(UTC).strftime('%Y%m%d-%H%M')}"
     card = {"version": version, "trained_on": len(rows), "channels": channels, "features": list(TEXT_COLS),
             "structure": "position prior (position_prior.json) + residual LightGBM on text features",
-            "smooth_bins": SMOOTH,
+            "smooth_bins": SMOOTH, "expert_prior_weight": EXPERT_WEIGHT, "expert_prior_features": list(EVENT_COLS),
             "params": PARAMS, "target": "YouTube 'Most replayed', z-scored within each video",
             "evaluation": "GroupKFold by channel", "created_at": datetime.now(UTC).isoformat(),
             "importance_gain": importance}

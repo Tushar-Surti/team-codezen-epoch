@@ -141,12 +141,17 @@ class TrainedInterest:
         self.version = card["version"]
         self.trained_on = int(card["trained_on"])
         self.smooth = int(card.get("smooth_bins", 1))
+        self.expert_weight = float(card.get("expert_prior_weight", 0.0))
+        self.expert_cols = [BIN_FEATURES.index(c) for c in card.get("expert_prior_features", [])]
 
     def contributions(self, bins: np.ndarray) -> np.ndarray:
         out = np.zeros((bins.shape[0], len(BIN_FEATURES)), dtype=np.float32)
         contrib = self.booster.predict(bins[:, self.cols], pred_contrib=True)
         out[:, self.cols] = contrib[:, :-1]
         out[:, BIN_FEATURES.index("pct")] += self.prior[: bins.shape[0]] + contrib[:, -1]
+        if self.expert_weight and self.expert_cols:  # same expert prior as training (rare event cues)
+            heur = HeuristicInterest().contributions(bins)
+            out[:, self.expert_cols] += self.expert_weight * heur[:, self.expert_cols]
         if self.smooth > 1:  # same moving average as training, per feature (keeps contributions additive)
             w = self.smooth
             out = np.stack([np.convolve(np.pad(c, w // 2, mode="edge"), np.ones(w) / w, mode="valid")

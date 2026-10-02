@@ -20,37 +20,56 @@ class GroqError(RuntimeError):
     pass
 
 
+def _keys() -> list[str]:
+    """GROQ_API_KEYS (comma-separated, one per account) and/or GROQ_API_KEY. Limits are per account."""
+    keys = [k.strip() for k in os.environ.get("GROQ_API_KEYS", "").split(",") if k.strip()]
+    single = os.environ.get("GROQ_API_KEY", "").strip()
+    if single and single not in keys:
+        keys.append(single)
+    return keys
+
+
 def available() -> bool:
-    return bool(os.environ.get("GROQ_API_KEY"))
+    return bool(_keys())
 
 
-def _headers() -> dict:
-    key = os.environ.get("GROQ_API_KEY")
-    if not key:
+# Keys whose daily quota is spent, with the time they can be tried again.
+_exhausted: dict[str, float] = {}
+
+
+def _post(path: str, *, retries: int = 4, timeout: float = 180.0, **kwargs) -> dict:
+    """POST with key rotation and short backoff on 429 / 5xx.
+
+    A per-minute limit waits briefly and retries. A daily limit (or a wait longer than 30 s) marks
+    that key spent and moves to the next key at once, instead of stalling the request for minutes."""
+    keys = _keys()
+    if not keys:
         raise GroqError("GROQ_API_KEY is not set")
-    return {"Authorization": f"Bearer {key}"}
-
-
-def _post(path: str, *, retries: int = 5, timeout: float = 180.0, **kwargs) -> dict:
-    """POST with backoff on 429 / 5xx. Honors Retry-After when Groq sends it."""
-    for attempt in range(retries):
-        try:
-            res = httpx.post(f"{BASE}{path}", headers=_headers(), timeout=timeout, **kwargs)
-        except httpx.TransportError as exc:
-            if attempt == retries - 1:
-                raise GroqError(f"network error: {exc}") from exc
-            time.sleep(2 ** attempt)
+    last = "no usable key"
+    for key in sorted(keys, key=lambda k: _exhausted.get(k, 0.0)):
+        if _exhausted.get(key, 0.0) > time.time():
+            last = "all Groq keys have hit their daily limit"
             continue
-        if res.status_code == 429 or res.status_code >= 500:
-            if attempt == retries - 1:
+        for attempt in range(retries):
+            try:
+                res = httpx.post(f"{BASE}{path}", headers={"Authorization": f"Bearer {key}"}, timeout=timeout, **kwargs)
+            except httpx.TransportError as exc:
+                last = f"network error: {exc}"
+                time.sleep(2 ** attempt)
+                continue
+            if res.status_code == 429 or res.status_code >= 500:
+                wait = float(res.headers.get("retry-after") or 0) or min(20.0, 3 * 2 ** attempt)
+                daily = "per day" in res.text or "(TPD)" in res.text or "(RPD)" in res.text
+                last = f"{res.status_code}: {res.text[:200]}"
+                if res.status_code == 429 and (daily or wait > 30):
+                    _exhausted[key] = time.time() + max(wait, 60.0)
+                    break  # next key
+                time.sleep(wait)
+                continue
+            if res.status_code >= 400:
                 raise GroqError(f"{res.status_code}: {res.text[:300]}")
-            wait = float(res.headers.get("retry-after") or 0) or min(120.0, 5 * 2 ** attempt)
-            time.sleep(wait)
-            continue
-        if res.status_code >= 400:
-            raise GroqError(f"{res.status_code}: {res.text[:300]}")
-        return res.json()
-    raise GroqError("unreachable")
+            return res.json()
+    raise GroqError(last)
 
 
 def asr_model() -> str:

@@ -196,6 +196,8 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
             {/* Key moments: spikes, the stretches the model expects to hold attention best (ink, never red) */}
             {spikes.map((m, i) => {
               const t = (m.start + m.end) / 2;
+              // The red-pen note owns its stretch of the curve; spikes inside it would scribble over the pen.
+              if (pen && t >= pen.flag.start - duration * 0.06 && t <= pen.flag.end + duration * 0.06) return null;
               const cy = y(retentionAt(analysis.curve.bins, duration, t).r);
               // Neighbouring spikes share one label so the words never collide.
               const crowded = spikes.slice(0, i).some((o) => Math.abs(x((o.start + o.end) / 2) - x(t)) < 48);

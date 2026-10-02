@@ -39,6 +39,12 @@ def groq_model() -> str:
     return os.environ.get("RETENT_GROQ_FAST_MODEL", "openai/gpt-oss-120b")
 
 
+def groq_fallbacks() -> list[str]:
+    """Each Groq model has its own daily token quota, so a spent model falls through to the next."""
+    extra = os.environ.get("RETENT_GROQ_FALLBACK_MODELS", "openai/gpt-oss-20b,llama-3.3-70b-versatile")
+    return [groq_model()] + [m.strip() for m in extra.split(",") if m.strip() and m.strip() != groq_model()]
+
+
 def _claude_json(system: str, user: str, schema: dict, effort: str) -> dict:
     import anthropic
 
@@ -61,11 +67,12 @@ def _claude_json(system: str, user: str, schema: dict, effort: str) -> dict:
     return json.loads(text)
 
 
-def _groq_json(system: str, user: str, schema: dict, effort: str) -> dict:
+def _groq_json(system: str, user: str, schema: dict, effort: str, model: str) -> dict:
+    extra = {"reasoning_effort": {"low": "low", "medium": "medium", "high": "high"}.get(effort, "medium")} \
+        if model.startswith("openai/gpt-oss") else {}
     return groq.chat_json(
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
-        model=groq_model(), schema=schema, temperature=0.2, max_tokens=12000,
-        reasoning_effort={"low": "low", "medium": "medium", "high": "high"}.get(effort, "medium"),
+        model=model, schema=schema, temperature=0.2, max_tokens=8000, **extra,
     )
 
 
@@ -87,8 +94,8 @@ def complete_json(*, role: Role, engine: Engine | str, system: str, user: str, s
     if not providers:
         raise LLMError("No LLM provider configured: set GROQ_API_KEY or ANTHROPIC_API_KEY in .env")
     errors = []
-    for provider in providers:
-        model = claude_model() if provider == Provider.claude else groq_model()
+    attempts = [(p, m) for p in providers for m in ([claude_model()] if p == Provider.claude else groq_fallbacks())]
+    for provider, model in attempts:
         key = hashlib.sha256(json.dumps([provider, model, prompt_version, system, user, schema, effort],
                                         sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:32]
         path = CACHE / f"{key}.json"
@@ -96,10 +103,10 @@ def complete_json(*, role: Role, engine: Engine | str, system: str, user: str, s
         if use_cache and path.exists():
             return json.loads(path.read_text(encoding="utf-8")), prov
         try:
-            fn = _claude_json if provider == Provider.claude else _groq_json
-            data = fn(system, user, schema, effort)
-        except Exception as exc:  # noqa: BLE001 - fall through to the next provider
-            errors.append(f"{provider}: {str(exc)[:200]}")
+            data = (_claude_json(system, user, schema, effort) if provider == Provider.claude
+                    else _groq_json(system, user, schema, effort, model))
+        except Exception as exc:  # noqa: BLE001 - fall through to the next model / provider
+            errors.append(f"{provider}/{model}: {str(exc)[:160]}")
             continue
         CACHE.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")

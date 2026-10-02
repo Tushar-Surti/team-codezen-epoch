@@ -54,6 +54,9 @@ OUTRO_CUES = (
     "see you in the next", "see you next time", "in conclusion", "to wrap up", "to sum up", "wrapping up",
     "that's basically it", "so that's it", "milte hain", "agle video", "aaj ke liye bas", "itna hi tha",
     "आज के लिए इतना", "अगले वीडियो", "मिलते हैं",
+    "that's basically the", "that's all i have", "hope you found this useful", "hope you enjoyed this video",
+    "hope you liked this video", "bas itna hi", "umeed hai aapko video", "बस इतना ही", "इतना ही था",
+    "उम्मीद है आपको वीडियो", "उम्मीद है आपको ये वीडियो",
 )
 GREETING_CUES = (
     "hey guys", "hi guys", "hello guys", "what's up guys", "welcome back", "welcome to my channel",

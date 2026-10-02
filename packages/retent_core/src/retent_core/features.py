@@ -102,7 +102,8 @@ def _apply_semantic(sentences: list[TimedSentence], feats: np.ndarray, semantic)
         # a span labelled "greeting" can still contain a subscribe ask.
         feats[i, col["cta"]] = float(role == "cta" or feats[i, col["cta"]] > 0)
         feats[i, col["sponsor"]] = float(role == "sponsor" or feats[i, col["sponsor"]] > 0)
-        feats[i, col["outro"]] = float(role == "outro")
+        # Wrap-up phrases keep their keyword cue too: the model often labels a mid-video sign-off as content.
+        feats[i, col["outro"]] = float(role == "outro" or feats[i, col["outro"]] > 0)
         feats[i, col["loop_open"]] = float(s.id in opens)
         feats[i, col["loop_close"]] = float(s.id in closes or role == "payoff")
         if role == "tangent":

@@ -20,17 +20,20 @@ type Props = {
   revealed?: boolean;
   compact?: boolean;
   label?: string;
+  /** Optional zero-shot LLM guess, drawn as a thin goldenrod line. */
+  llm?: number[] | null;
 };
 
 const PAD = { l: 44, r: 16, t: 14, b: 26 };
 
 /** Predicted relative interest (ink) against YouTube's "Most replayed" (violet), on one 0–1 scale. */
-export function InterestChart({ model, actual, duration, predicted = true, revealed = true, compact = false, label }: Props) {
+export function InterestChart({ model, actual, duration, predicted = true, revealed = true, compact = false, label, llm = null }: Props) {
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const svg = useRef<SVGSVGElement>(null);
   const clipId = useId().replace(/:/g, "");
   const m = useMemo(() => unit(model), [model]);
   const a = useMemo(() => unit(actual), [actual]);
+  const g = useMemo(() => (llm ? unit(llm) : null), [llm]);
 
   const x = scaleLinear().domain([0, m.length - 1]).range([PAD.l, Math.max(PAD.l + 10, width - PAD.r)]);
   const y = scaleLinear().domain([0, 1]).range([Math.max(PAD.t + 10, height - PAD.b), PAD.t]);
@@ -90,6 +93,8 @@ export function InterestChart({ model, actual, duration, predicted = true, revea
             <path d={ar(a) ?? ""} fill="var(--actual)" opacity={0.12} />
             <path d={ln(a) ?? ""} fill="none" stroke="var(--actual)" strokeWidth={2} strokeLinejoin="round" />
           </g>
+
+          {g && <path d={ln(g) ?? ""} fill="none" stroke="var(--rev-gold)" strokeWidth={1.8} strokeLinejoin="round" opacity={0.95} />}
 
           {/* Our blind prediction */}
           {predicted && (

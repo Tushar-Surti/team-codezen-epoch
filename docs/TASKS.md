@@ -14,14 +14,14 @@ Update this file whenever a task changes state; it is the single source of truth
 |---|---|---|---|
 | 0. Foundations | 6 | 3 | 0 |
 | 1. Data | 4 | 6 | 1 |
-| 2. Model & evaluation | 9 | 2 | 6 |
+| 2. Model & evaluation | 10 | 1 | 6 |
 | 3. Core loop | 12 | 0 | 1 |
-| 4. Differentiators | 2 | 4 | 8 |
+| 4. Differentiators | 3 | 4 | 7 |
 | 5. Validation & discovery | 2 | 0 | 3 |
 | 6. Finish | 2 | 1 | 5 |
-| 7. Pitch kit | 1 | 1 | 4 |
+| 7. Pitch kit | 1 | 2 | 3 |
 | 8. Showstoppers | 0 | 0 | 5 |
-| **Total** | **38** | **17** | **33** |
+| **Total** | **40** | **17** | **31** |
 
 ---
 
@@ -72,7 +72,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | Fit hazard baselines on D2 → `models/baselines.json` | Claude | ⬜ | Turns curves "calibrated" |
 | Ensemble uncertainty band (5 fold models) | Claude | ⬜ | |
 | SHAP attributions for the trained model | Claude | ✅ | Same `Signal` shape as today |
-| Baselines: position-only, Claude zero-shot, Groq zero-shot, random | Claude | 🟡 | Position, rules-v0 and random done; Groq zero-shot still to add |
+| Baselines: position-only, Claude zero-shot, Groq zero-shot, random | Claude | ✅ | Position, rules-v0, random, and a zero-shot LLM (Groq gpt-oss-120b) head-to-head on a fixed sample |
 | `eval_report.json` + `norms.json` (`ml/eval/run.py`) | Claude | 🟡 | `eval_report.json` done (GroupKFold by channel, 95% CIs, per-video overlays); norms still to do |
 | Category norms on each flag (`Flag.norm`) | Claude | ⬜ | "Top Hindi tech reviews hook by 0:08" |
 | Missing flags: chapter skip, visual/audio monotony | Claude | ⬜ | Monotony needs video mode |
@@ -112,7 +112,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | D7 | Exports: FCPXML / Premiere XML, PDF report | Claude | 🟡 | EDL, script, chapters and CSV done |
 | F1 | Live script editor with underlines | You + Claude | ⬜ | |
 | F2 | Versions compare view | You + Claude | ⬜ | Revisions exist; side-by-side compare missing |
-| — | More samples: Devanagari Hindi, English education, vlog; extend Hinglish to ~8 min | Claude | ⬜ | Demo coverage for all 3 categories |
+| — | More samples: Devanagari Hindi, English education, vlog; extend Hinglish to ~8 min | Claude | ✅ | Hinglish tech, English education, Hindi (Devanagari) vlog, each with planted mistakes |
 
 ## Phase 5: Validation & discovery
 
@@ -146,7 +146,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | Data card | Claude | ✅ |
 | 2–3 min demo video | You | ⬜ |
 | Pitch deck | You + Claude | ⬜ |
-| Judge Q&A rehearsal ([PLAN.md §12](PLAN.md#12-judge-qa-prep-analytics-experts-will-ask-these)) | You | ⬜ |
+| Judge Q&A rehearsal: script and answers in [PITCH.md](PITCH.md), rehearse twice | You | 🟡 |
 
 ## Phase 8: Showstoppers (only after Phase 6 is done)
 

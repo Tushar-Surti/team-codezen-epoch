@@ -11,8 +11,8 @@ export type EvalVideo = {
   fold: number;
   duration: number;
   text_kind: string;
-  metrics: Record<"model" | "position" | "rules_v0" | "random", MethodMetrics>;
-  series?: { actual: number[]; model: number[]; position: number[] };
+  metrics: Record<"model" | "position" | "rules_v0" | "random", MethodMetrics> & { llm?: MethodMetrics };
+  series?: { actual: number[]; model: number[]; position: number[]; llm?: number[] };
 };
 
 export type EvalSummary = {
@@ -25,6 +25,11 @@ export type EvalSummary = {
     overall: Record<string, Record<keyof MethodMetrics, Interval>>;
     by_cell: Record<string, { n: number } & Record<string, number>>;
     wins: Record<string, number>;
+    llm_head_to_head?: {
+      n: number;
+      model_name: string;
+      model_beats_llm: number;
+    } & Record<"model" | "llm" | "position", Record<keyof MethodMetrics, Interval>>;
   };
   videos: EvalVideo[];
   top_features: string[];

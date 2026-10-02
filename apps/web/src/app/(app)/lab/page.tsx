@@ -130,6 +130,38 @@ export default function LabPage() {
           </div>
         </section>
 
+        {s.llm_head_to_head && (
+          <section aria-labelledby="llm" className="rounded-[8px] border border-ink/25 bg-paper-raised p-5">
+            <h2 id="llm" className="text-[17px] font-[640]">Why not just ask an AI?</h2>
+            <p className="mt-1 max-w-[86ch] text-[14px] text-ink-2">
+              We gave a large language model ({s.llm_head_to_head.model_name}) the same transcript and asked it directly where
+              viewers would be most and least interested. Same {s.llm_head_to_head.n} held-out videos, same scoring.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              {(["model", "llm", "position"] as const).map((k) => {
+                const iv = s.llm_head_to_head![k].spearman;
+                const label = k === "model" ? "Retent AI model" : k === "llm" ? "AI alone, zero-shot" : "Position only";
+                return (
+                  <div key={k} className={k === "model" ? "border-t-2 border-ink pt-3" : "border-t border-rule-strong pt-3"}>
+                    <p className="text-[13px] text-ink-3">{label}</p>
+                    <p className={`tnum mt-1 text-[30px] leading-none font-[650] wdth-wide ${k === "model" ? "" : "text-ink-2"}`}>
+                      {iv.mean >= 0 ? "+" : "−"}{Math.abs(iv.mean).toFixed(3)}
+                    </p>
+                    <p className="tnum mt-1 text-[12px] text-ink-3">
+                      shape match · 95% CI [{iv.lo >= 0 ? "+" : "−"}{Math.abs(iv.lo).toFixed(2)}, {iv.hi >= 0 ? "+" : "−"}{Math.abs(iv.hi).toFixed(2)}]
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-4 text-[14px] text-ink-2">
+              Retent AI beats the AI alone on <strong className="font-[650] text-ink">{Math.round(s.llm_head_to_head.model_beats_llm * 100)}%</strong> of
+              these videos. Language models are good at reading a script; predicting where real viewers rewatch or tune out
+              needs a model trained on what viewers actually did.
+            </p>
+          </section>
+        )}
+
         <div className="grid gap-10 lg:grid-cols-2">
           <section aria-labelledby="cells">
             <h2 id="cells" className="text-[17px] font-[640]">By category and language</h2>

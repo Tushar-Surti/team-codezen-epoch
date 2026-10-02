@@ -27,6 +27,7 @@ export default function BlindTestPage() {
   const [cell, setCell] = useState<string>("all");
   const [picked, setPicked] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("pick");
+  const [showLlm, setShowLlm] = useState(false);
   const { data: video } = useQuery({
     queryKey: ["eval-video", picked],
     queryFn: () => evalApi.video(picked!),
@@ -41,6 +42,7 @@ export default function BlindTestPage() {
   const choose = (id: string) => {
     setPicked(id);
     setStep("pick");
+    setShowLlm(false);
   };
 
   return (
@@ -159,6 +161,20 @@ export default function BlindTestPage() {
                 <span className={clsx("flex items-center gap-1.5 transition-opacity duration-500", step === "revealed" ? "opacity-100" : "opacity-30")}>
                   <span className="h-[2px] w-4" style={{ background: "var(--actual)" }} />YouTube “Most replayed”
                 </span>
+                {step === "revealed" && video.series?.llm && (
+                  <button
+                    onClick={() => setShowLlm((v) => !v)}
+                    aria-pressed={showLlm}
+                    className={clsx("ml-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-[580] transition-colors",
+                      showLlm ? "border-rev-gold text-ink" : "border-rule-strong text-ink-2 hover:border-ink/40")}
+                  >
+                    <span className="h-[2px] w-4" style={{ background: "var(--rev-gold)" }} />
+                    {showLlm ? "Hide" : "Compare with"} AI alone
+                    {showLlm && video.metrics.llm && (
+                      <span className="tnum text-ink-3">({video.metrics.llm.spearman >= 0 ? "+" : "−"}{Math.abs(video.metrics.llm.spearman).toFixed(2)})</span>
+                    )}
+                  </button>
+                )}
               </div>
               <div className="mt-2 h-[clamp(260px,42vh,420px)] rounded-[6px] border border-rule bg-paper-raised">
                 <InterestChart
@@ -168,6 +184,7 @@ export default function BlindTestPage() {
                   duration={video.duration}
                   predicted={step !== "pick"}
                   revealed={step === "revealed"}
+                  llm={showLlm ? video.series!.llm ?? null : null}
                 />
               </div>
 
