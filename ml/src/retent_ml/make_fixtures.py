@@ -20,7 +20,7 @@ OUT = ROOT / "fixtures" / "analyses"
 
 
 def from_sample(path: Path) -> dict:
-    s = json.loads(path.read_text())
+    s = json.loads(path.read_text(encoding="utf-8"))
     sents = sentences_from_script(s["script"])
     meta = VideoMeta(title=s["title"], category=Category(s["category"]), language=detect_language(s["script"]),
                      thumbnail_text=s.get("thumbnail_text"), input_mode=InputMode.script, duration_seconds=0)
@@ -29,7 +29,7 @@ def from_sample(path: Path) -> dict:
 
 
 def from_record(path: Path) -> dict | None:
-    r = json.loads(path.read_text())
+    r = json.loads(path.read_text(encoding="utf-8"))
     if r["caption"].get("status", "ok") != "ok" or not r["caption"]["segments"]:
         return None
     sents = sentences_from_captions(r["caption"]["segments"])
@@ -50,16 +50,16 @@ def main() -> None:
     index = []
     for p in sorted(SAMPLES.glob("*.json")):
         a = from_sample(p)
-        (OUT / f"{a['id']}.json").write_text(json.dumps(a, ensure_ascii=False))
+        (OUT / f"{a['id']}.json").write_text(json.dumps(a, ensure_ascii=False), encoding="utf-8")
         index.append({"id": a["id"], "title": a["meta"]["title"], "kind": "sample"})
     for p in sorted(RAW.glob("*.json"))[:12]:
         a = from_record(p)
         if a:
-            (OUT / f"{a['id']}.json").write_text(json.dumps(a, ensure_ascii=False))
+            (OUT / f"{a['id']}.json").write_text(json.dumps(a, ensure_ascii=False), encoding="utf-8")
             index.append({"id": a["id"], "title": a["meta"]["title"], "kind": "public"})
-    (OUT / "index.json").write_text(json.dumps(index, indent=1, ensure_ascii=False))
+    (OUT / "index.json").write_text(json.dumps(index, indent=1, ensure_ascii=False), encoding="utf-8")
     for row in index:
-        a = json.loads((OUT / f"{row['id']}.json").read_text())
+        a = json.loads((OUT / f"{row['id']}.json").read_text(encoding="utf-8"))
         m = a["metrics"]
         print(f"{row['id']:22s} intro={m['intro_retention']:.2f} apv={m['apv']:.2f} flags={len(a['flags'])}")
         for f in a["flags"][:6]:

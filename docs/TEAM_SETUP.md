@@ -52,6 +52,15 @@ uv run --package retent-ml python -m retent_ml.collect --only vlog/hi
 uv run --package retent-ml python -m retent_ml.collect --captions --sleep 4
 ```
 
+**Pass C** transcribes videos with no caption track (kept by pass A with caption status `none`) using Groq Whisper. It needs `GROQ_API_KEY` in `.env` and no GPU or ffmpeg. Groq's free tier allows about 2 hours of audio per hour, so each run is capped by `--max-minutes`:
+
+```bash
+uv run --package retent-ml python -m retent_ml.asr                     # missing captions
+uv run --package retent-ml python -m retent_ml.asr --include-pending   # also the 429-blocked ones
+```
+
+yt-dlp needs a JavaScript runtime for YouTube. The collector uses `deno` if installed, otherwise `node`. Without either, video details and captions come back empty.
+
 Seeds (162 channels across 6 cells) are in `ml/seeds/channels.json`. Regenerate them with `python -m retent_ml.seeds`.
 
 What the spike showed (2026-10-02):

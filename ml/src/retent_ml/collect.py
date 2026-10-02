@@ -4,6 +4,9 @@ Crawls channel upload lists, keeps 5–15 minute videos older than MIN_AGE_DAYS,
 and writes one JSON record per kept video to data/raw/d1/<video_id>.json. Safe to stop and
 restart: already-probed ids (kept or rejected) are skipped via data/raw/d1/_probed.jsonl.
 
+Videos without a caption track are kept with caption status "none" and transcribed in pass C
+(retent_ml.asr, Groq Whisper).
+
 YouTube only serves "Most replayed" for some videos (Phase 0 spike: ~6 in 16, skewed to older
 uploads), so expect to probe 2–3x more videos than you keep.
 
@@ -16,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import shutil
 import tempfile
 import time
 from datetime import UTC, datetime, timedelta
@@ -33,10 +37,17 @@ MIN_AGE_DAYS = 30
 CAPTION_LANGS = ("en", "hi")
 
 
+def _js_runtimes() -> dict:
+    """yt-dlp needs a JS runtime for YouTube. It looks for deno by default; fall back to node."""
+    if shutil.which("deno") or not shutil.which("node"):
+        return {}
+    return {"js_runtimes": {"node": {}}}
+
+
 def _ydl(**extra) -> yt_dlp.YoutubeDL:
     return yt_dlp.YoutubeDL({
-        "quiet": True, "no_warnings": True, "skip_download": True, "ignore_no_formats_error": True,
-        "impersonate": ImpersonateTarget("chrome"), **extra,
+        "quiet": True, "no_warnings": True, "noprogress": True, "skip_download": True, "ignore_no_formats_error": True,
+        "impersonate": ImpersonateTarget("chrome"), **_js_runtimes(), **extra,
     })
 
 
@@ -80,7 +91,7 @@ def _fetch_json3(video_id: str, kind: str, key: str) -> list[dict]:
         files = list(Path(tmp).glob("*.json3"))
         if not files:
             return []
-        data = json.loads(files[0].read_text())
+        data = json.loads(files[0].read_text(encoding="utf-8"))
     segs = []
     for ev in data.get("events", []):
         text = "".join(s.get("utf8", "") for s in ev.get("segs") or []).strip()
@@ -113,15 +124,18 @@ def probe(video_id: str) -> tuple[dict | None, str]:
             caption = (cand, *picked)
             break
     if caption is None:
-        return None, "no_caption"
-    cap_lang, cap_kind, cap_key = caption
-    try:
-        segments, cap_status = _fetch_json3(video_id, cap_kind, cap_key), "ok"
-    except RateLimited:
-        # Caption endpoint is throttled per IP; keep the record and fetch captions in pass B.
-        segments, cap_status = [], "pending"
-    if cap_status == "ok" and len(segments) < 20:
-        return None, "caption_empty"
+        # No caption track: keep the record; pass C (retent_ml.asr) transcribes it with Groq Whisper.
+        cap_lang, cap_kind, cap_key = (lang if lang in CAPTION_LANGS else None), None, None
+        segments, cap_status = [], "none"
+    else:
+        cap_lang, cap_kind, cap_key = caption
+        try:
+            segments, cap_status = _fetch_json3(video_id, cap_kind, cap_key), "ok"
+        except RateLimited:
+            # Caption endpoint is throttled per IP; keep the record and fetch captions in pass B (or C).
+            segments, cap_status = [], "pending"
+        if cap_status == "ok" and len(segments) < 20:
+            segments, cap_status = [], "empty"
 
     record = {
         "id": video_id,
@@ -142,22 +156,22 @@ def probe(video_id: str) -> tuple[dict | None, str]:
         "caption": {"lang": cap_lang, "kind": cap_kind, "key": cap_key, "status": cap_status, "segments": segments},
         "collected_at": datetime.now(UTC).isoformat(),
     }
-    return record, "kept" if cap_status == "ok" else "kept_pending_caption"
+    return record, {"ok": "kept", "pending": "kept_pending_caption"}.get(cap_status, "kept_needs_asr")
 
 
 def fetch_pending_captions(sleep: float) -> None:
     """Pass B: fill in captions for kept records whose caption fetch was rate-limited."""
     pending = [f for f in sorted(OUT_DIR.glob("*.json"))
-               if json.loads(f.read_text())["caption"].get("status") == "pending"]
+               if json.loads(f.read_text(encoding="utf-8"))["caption"].get("status") == "pending"]
     print(f"{len(pending)} records waiting for captions", flush=True)
     for f in pending:
-        rec = json.loads(f.read_text())
+        rec = json.loads(f.read_text(encoding="utf-8"))
         cap = rec["caption"]
         for attempt in range(5):
             try:
                 segs = _fetch_json3(rec["id"], cap["kind"], cap["key"])
                 cap.update(segments=segs, status="ok" if len(segs) >= 20 else "empty")
-                f.write_text(json.dumps(rec, ensure_ascii=False))
+                f.write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
                 print(f"{rec['id']} captions {cap['status']} ({len(segs)} segments)", flush=True)
                 break
             except RateLimited:
@@ -175,10 +189,12 @@ def _load_probed() -> set[str]:
     if not PROBED_LOG.exists():
         return set()
     done = set()
-    for line in PROBED_LOG.read_text().splitlines():
+    for line in PROBED_LOG.read_text(encoding="utf-8").splitlines():
         if line.strip():
             row = json.loads(line)
-            if not row["status"].startswith(("error", "rate_limited")):
+            # Errors, too-recent uploads (they age) and old caption-less rejections (pass C transcribes
+            # those now) are retried.
+            if not row["status"].startswith(("error", "rate_limited", "no_caption", "caption_empty", "too_recent")):
                 done.add(row["id"])
     return done
 
@@ -188,7 +204,7 @@ def main() -> None:
     ap.add_argument("--seeds", type=Path, default=ROOT / "ml" / "seeds" / "channels.json")
     ap.add_argument("--per-channel", type=int, default=40, help="Uploads to list per channel.")
     ap.add_argument("--sleep", type=float, default=2.5, help="Base pause between probes (seconds).")
-    ap.add_argument("--only", help="Only seeds whose cell matches, e.g. tech/hi.")
+    ap.add_argument("--only", help="Only these cells, comma-separated, e.g. tech/hi,vlog/hi.")
     ap.add_argument("--captions", action="store_true", help="Pass B: fetch captions for pending records only.")
     args = ap.parse_args()
     if args.captions:
@@ -196,31 +212,37 @@ def main() -> None:
         return
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    seeds = json.loads(args.seeds.read_text())
+    seeds = json.loads(args.seeds.read_text(encoding="utf-8"))
+    only = set(args.only.split(",")) if args.only else None
     probed = _load_probed()
     kept = len(list(OUT_DIR.glob("*.json")))
 
     for seed in seeds:
         cell = f"{seed['category']}/{seed['lang']}"
-        if args.only and args.only != cell:
+        if only and cell not in only:
             continue
         try:
-            entries = list_channel_videos(seed["url"], args.per_channel)
+            # Listings are newest-first and carry no dates; list deeper so the window reaches
+            # uploads older than MIN_AGE_DAYS even on channels that post daily.
+            entries = list_channel_videos(seed["url"], args.per_channel * 3)
         except Exception as exc:  # noqa: BLE001 - keep crawling other channels
             print(f"[skip channel] {seed['url']}: {str(exc)[:120]}", flush=True)
             continue
-        for e in entries:
+        i, skip, probes = 0, 1, 0
+        while i < len(entries) and probes < args.per_channel:
+            e = entries[i]
             vid = e["id"]
+            i += 1
             if vid in probed:
                 continue
             if e.get("duration") and not MIN_S <= e["duration"] <= MAX_S:
                 status, record = "duration", None
             else:
+                probes += 1
                 record, status = None, "rate_limited"
                 for attempt in range(4):
                     try:
                         record, status = probe(vid)
-                        backoff = 0
                         break
                     except RateLimited:
                         backoff = 60 * (2 ** attempt)
@@ -230,15 +252,20 @@ def main() -> None:
                         record, status = None, f"error:{str(exc)[:80]}"
                         break
                 time.sleep(args.sleep + random.random() * args.sleep)
+            # Gallop past recent uploads: each "too_recent" doubles the stride until videos are old enough.
+            if status == "too_recent":
+                i += skip - 1
+                skip = min(skip * 2, 16)
+            else:
+                skip = 1
             if record:
                 record.update(category=seed["category"], seed_lang=seed["lang"], seed_tier=seed.get("tier"))
-                (OUT_DIR / f"{vid}.json").write_text(json.dumps(record, ensure_ascii=False))
+                (OUT_DIR / f"{vid}.json").write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
                 kept += 1
-            with PROBED_LOG.open("a") as f:
+            with PROBED_LOG.open("a", encoding="utf-8") as f:
                 f.write(json.dumps({"id": vid, "status": status, "cell": cell}) + "\n")
             probed.add(vid)
             print(f"[{cell}] {vid} {status}  (kept {kept})", flush=True)
-
 
 if __name__ == "__main__":
     main()

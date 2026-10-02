@@ -81,7 +81,7 @@ def main() -> None:
               flush=True)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(list(seeds.values()), indent=1, ensure_ascii=False) + "\n")
+    OUT.write_text(json.dumps(list(seeds.values()), indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {len(seeds)} seeds → {OUT}")
 
 

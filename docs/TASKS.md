@@ -10,8 +10,8 @@ Update this file whenever a task changes state; it is the single source of truth
 
 | Phase | Done | Partial | Left |
 |---|---|---|---|
-| 0. Foundations | 6 | 0 | 3 |
-| 1. Data | 0 | 2 | 7 |
+| 0. Foundations | 6 | 1 | 2 |
+| 1. Data | 1 | 3 | 5 |
 | 2. Model & evaluation | 4 | 0 | 13 |
 | 3. Core loop | 11 | 1 | 1 |
 | 4. Differentiators | 0 | 4 | 10 |
@@ -19,7 +19,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | 6. Finish | 0 | 1 | 7 |
 | 7. Pitch kit | 0 | 1 | 5 |
 | 8. Showstoppers | 0 | 0 | 5 |
-| **Total** | **21** | **9** | **56** |
+| **Total** | **22** | **11** | **53** |
 
 ---
 
@@ -33,7 +33,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | impeccable init → PRODUCT.md | You + Claude | ✅ | |
 | Visual direction chosen | You | ✅ | Revision Draft; brief in `apps/web/.impeccable/surfaces/` |
 | Monorepo scaffold (uv + pnpm) | Claude | ✅ | |
-| Add `ANTHROPIC_API_KEY` and `GROQ_API_KEY` to `.env` | You | ⬜ | Blocks every LLM task below |
+| Add `ANTHROPIC_API_KEY` and `GROQ_API_KEY` to `.env` | You | 🟡 | Groq added and verified; Anthropic still missing (blocks Claude tasks) |
 | WSL2 + CUDA 12.8 + PyTorch setup on both Windows laptops | Data, ML | ⬜ | [TEAM_SETUP.md](TEAM_SETUP.md) |
 | Screenshot digitizer prototype (5 Studio screenshots) | ML | ⬜ | Feeds E4 and D2 |
 
@@ -43,8 +43,8 @@ Update this file whenever a task changes state; it is the single source of truth
 |---|---|---|---|
 | D1 pass A: metadata + "Most replayed" | Data | 🟡 | 105 tech/en kept so far; collector running on the Mac |
 | D1 pass B: captions | Data | 🟡 | 19 done, 86 waiting on the 429 limit; run `--captions` from other IPs |
-| Collect Hindi cells (tech/hi, education/hi, vlog/hi) | Data | ⬜ | Split across teammates' connections with `--only` |
-| Groq Whisper fallback when captions are blocked | Claude | ⛔ | Needs the Groq key |
+| Collect Hindi cells (tech/hi, education/hi, vlog/hi) | Data | 🟡 | Running on the Windows laptop with `--only tech/hi,education/hi,vlog/hi,education/en,vlog/en` |
+| Groq Whisper fallback when captions are blocked | Claude | ✅ | Pass C: `python -m retent_ml.asr`; caption-less videos are now kept for it |
 | D1-media subset (~300 videos: audio and low-res video) | Data | ⬜ | For video-mode features (A3) |
 | D2: digitize 60–100 public Studio retention screenshots | Data | ⬜ | Absolute-level calibration; store the source URL for each |
 | D3: SponsorBlock segments for D1 videos | Data | ⬜ | Natural experiment for sponsor dips |
