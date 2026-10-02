@@ -287,7 +287,7 @@ class Redundancy(_Model):
 
 
 class PacingLane(_Model):
-    key: Literal["wpm", "info_rate", "filler_rate", "cut_rate", "loudness", "pitch_var", "face"]
+    key: Literal["wpm", "info_rate", "filler_rate", "cut_rate", "silence", "loudness", "pitch_var", "face"]
     label: str
     unit: str
     values: list[float] = Field(min_length=N_BINS, max_length=N_BINS)

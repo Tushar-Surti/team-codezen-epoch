@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -196,6 +196,114 @@ async def _run_url_job(job, req: AnalyzeRequest, analysis_id: str) -> None:
         await job.finish(str(exc))
 
 
+UPLOADS = ROOT / "data" / "uploads"
+MAX_UPLOAD_BYTES = 2_000_000_000
+
+
+async def _run_upload_job(job, path: Path, title: str, category: str, engine: str, thumbnail_text: str | None,
+                          analysis_id: str) -> None:
+    import concurrent.futures
+
+    from retent_api import media_probe
+    from retent_core import groq
+
+    try:
+        await job.emit(Stage.ingest, "start", "Reading the rough cut")
+        dur = await asyncio.to_thread(media_probe.duration, path)
+        video = await asyncio.to_thread(media_probe.has_video, path)
+        await job.emit(Stage.ingest, "done", f"{dur / 60:.1f} min {'video' if video else 'audio'}", 0.1)
+        if dur > 25 * 60:
+            raise ValueError(f"That cut runs {dur / 60:.0f} minutes. Retent AI analyses up to 25 minutes (tuned for 5–15).")
+
+        await job.emit(Stage.transcribe, "start", "Extracting the audio and transcribing it with Whisper", 0.15)
+        audio = await asyncio.to_thread(media_probe.extract_audio, path, path.with_name("audio.mp3"))
+        if not groq.available():
+            raise ValueError("Transcribing a rough cut needs GROQ_API_KEY in .env.")
+        # Whisper (network) and the visual/audio measurements (local) run side by side.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+            f_asr = pool.submit(groq.transcribe, audio, None)
+            f_cuts = pool.submit(media_probe.scene_cuts, path) if video else None
+            f_sil = pool.submit(media_probe.silences, audio)
+            await job.emit(Stage.segment, "start", "Measuring shot cuts and silences", 0.25)
+            segs = await asyncio.wrap_future(f_asr)
+            cuts = await asyncio.wrap_future(f_cuts) if f_cuts else []
+            sil = await asyncio.wrap_future(f_sil)
+        if len(segs) < 20:
+            raise ValueError("Couldn't get enough speech from this cut to analyze it.")
+        sents = sentences_from_captions(segs)
+        media = {"duration": dur, "cuts": cuts, "silences": sil, "has_video": video}
+        await job.emit(Stage.transcribe, "done", f"{len(sents)} lines transcribed", 0.35)
+        await job.emit(Stage.segment, "done",
+                       f"{len(cuts)} shot cuts, {sum(1 for a, b in sil if b - a >= 3)} pauses of 3 s or more" if video
+                       else f"Audio only: {len(sil)} silences", 0.4)
+
+        await job.emit(Stage.read, "start", "Reading for hooks, promises and loops", 0.45)
+        semantic: Semantic | None = None
+        try:
+            semantic = await asyncio.to_thread(read_script, sents, title, thumbnail_text, category, engine)
+            await job.emit(Stage.read, "done", f"Read by {semantic.provenance.provider.title()} · {len(semantic.sections)} sections",
+                           0.55, provenance=semantic.provenance)
+        except LLMError as exc:
+            await job.emit(Stage.read, "done", f"No language model available, using keyword rules ({str(exc)[:80]})", 0.55)
+
+        await job.emit(Stage.predict, "start", "Predicting the retention curve", 0.6)
+        text = " ".join(s.text for s in sents[:80])
+        meta = VideoMeta(title=title, thumbnail_text=thumbnail_text, category=category, language=detect_language(text),
+                         input_mode=InputMode.video, duration_seconds=dur)
+        writer = (lambda flags, fixes, payoff_id: write_fixes(sents, title, flags, fixes, engine, payoff_id)[0])
+        await job.emit(Stage.fix, "start", "Writing fixes and simulating each one", 0.75)
+        analysis = await asyncio.to_thread(analyze_sentences, sents, meta, engine=engine, analysis_id=analysis_id,
+                                           timing="measured", semantic=semantic, writer=writer, media=media)
+        await job.emit(Stage.explain, "done", f"{len(analysis.flags)} drop risks explained", 0.9)
+        await job.emit(Stage.fix, "done", f"{len(analysis.fixes)} fixes simulated", 0.98)
+        extra: dict = {"_media": {**media, "file": path.name}}
+        if semantic:
+            extra["_semantic"] = semantic.to_json()
+        store.put(analysis, extra=extra)
+        await job.finish()
+    except Exception as exc:  # noqa: BLE001 - surface the message to the client
+        await job.emit(Stage.ingest, "error", str(exc))
+        await job.finish(str(exc))
+
+
+@app.post("/api/analyze/upload", response_model=JobAccepted)
+async def analyze_upload(file: UploadFile = File(...), title: str = Form(...), category: str = Form("tech"),
+                         engine: str = Form("auto"), thumbnail_text: str | None = Form(None)) -> JobAccepted:
+    """Rough-cut mode: upload an unpublished video (or audio) before publishing."""
+    if not title.strip():
+        raise HTTPException(422, "Add the title you plan to publish with.")
+    suffix = Path(file.filename or "cut.mp4").suffix.lower() or ".mp4"
+    if suffix not in {".mp4", ".mov", ".m4v", ".mkv", ".webm", ".mp3", ".m4a", ".wav"}:
+        raise HTTPException(415, "Upload an MP4, MOV, MKV or WebM video (or MP3, M4A, WAV audio).")
+    analysis_id = uuid.uuid4().hex[:12]
+    folder = UPLOADS / analysis_id
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"source{suffix}"
+    size = 0
+    with path.open("wb") as out:
+        while chunk := await file.read(4 * 1024 * 1024):
+            size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                raise HTTPException(413, "That file is over 2 GB. Export a smaller cut (720p is plenty).")
+            out.write(chunk)
+    job = jobs.create(analysis_id)
+    asyncio.create_task(_run_upload_job(job, path, title.strip(), category, engine, thumbnail_text, analysis_id))
+    return JobAccepted(job_id=job.id, analysis_id=analysis_id)
+
+
+@app.get("/api/media/{analysis_id}")
+def media_file(analysis_id: str):
+    """The uploaded rough cut, for the workspace player."""
+    from fastapi.responses import FileResponse
+
+    raw = store.get_raw(analysis_id) or {}
+    name = (raw.get("_media") or {}).get("file")
+    path = (UPLOADS / analysis_id / name).resolve() if name else None
+    if not path or not path.exists() or path.parent.parent != UPLOADS.resolve():
+        raise HTTPException(404, "No uploaded media for this analysis")
+    return FileResponse(path)
+
+
 @app.post("/api/analyze", response_model=JobAccepted)
 async def analyze(req: AnalyzeRequest) -> JobAccepted:
     if not req.script and not req.source_url:
@@ -234,6 +342,7 @@ def hooks(body: dict) -> dict:
         raise HTTPException(404, "Analysis not found")
     raw = store.get_raw(a.id) or {}
     semantic = Semantic.from_json(raw["_semantic"]) if raw.get("_semantic") else None
+    media = raw.get("_media")
     sents = [TimedSentence(s.id, s.text, s.start, s.end, s.lang) for s in a.sentences]
     payoff_id = a.metrics.payoff_sentence_id
     try:
@@ -242,12 +351,13 @@ def hooks(body: dict) -> dict:
     except LLMError as exc:
         raise HTTPException(503, f"No language model available to write hooks: {exc}") from exc
     tail = _tail(a)
-    before = run(sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=semantic, tail=tail)
+    before = run(sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=semantic, tail=tail,
+                 media=media)
     out = []
     for h in written:
         ops = [EditOp(op=EditOpKind.insert, after_sentence_id="", new_text=h["text"], note="hook")]
         after = run(apply_ops(sents, ops), a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id,
-                    semantic=edited_semantic(semantic, ops), tail=tail)
+                    semantic=edited_semantic(semantic, ops), tail=tail, media=media)
         out.append({**h, "delta": delta(before, after).model_dump(),
                     "intro_retention": round(after.metrics.intro_retention, 4)})
     out.sort(key=lambda h: (h["delta"]["intro_retention"], h["delta"]["viewers_at_payoff"] or 0), reverse=True)
@@ -324,17 +434,20 @@ def simulate(req: SimulateRequest) -> Simulation:
 
     raw = store.get_raw(req.analysis_id) or {}
     semantic = Semantic.from_json(raw["_semantic"]) if raw.get("_semantic") else None
+    media = raw.get("_media")
     sents = [TimedSentence(s.id, s.text, s.start, s.end, s.lang) for s in a.sentences]
     ops = [op for fx in a.fixes if fx.id in req.fix_ids for op in fx.ops]
     payoff_id = a.metrics.payoff_sentence_id
     tail = _tail(a)
-    before = run(sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=semantic, tail=tail)
+    before = run(sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=semantic, tail=tail,
+                 media=media)
     after_sents = apply_ops(sents, ops)
     after_sem = edited_semantic(semantic, ops)
     after = run(after_sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=after_sem,
-                tail=tail)
+                tail=tail, media=media)
     edited = analyze_sentences(after_sents, a.meta.model_copy(update={"duration_seconds": max(x.end for x in after_sents) + tail}),
-                               engine=a.engine, analysis_id=a.id, timing=a.sentences[0].timing, semantic=after_sem)
+                               engine=a.engine, analysis_id=a.id, timing=a.sentences[0].timing, semantic=after_sem,
+                               media=media)
     return Simulation(
         analysis_id=a.id, fix_ids=req.fix_ids, curve=edited.curve,
         metrics=Metrics(**{**edited.metrics.model_dump(), "payoff_time": after.payoff_time,

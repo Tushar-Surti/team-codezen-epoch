@@ -1,0 +1,18 @@
+import { chromium } from "@playwright/test";
+const [, , file] = process.argv;
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await page.goto("http://localhost:3000/new", { waitUntil: "networkidle" });
+await page.getByRole("tab", { name: /Rough cut/ }).click();
+await page.locator('input[type="file"]').setInputFiles(file);
+await page.getByPlaceholder("The title you plan to publish with").fill("3i ATLAS: क्या एलियंस धरती पर नज़र रख रहे हैं?");
+await page.getByRole("radio", { name: "Education" }).click();
+await page.screenshot({ path: "../../.impeccable/review/upload-ready.png" });
+await page.getByRole("button", { name: /Predict the drop/ }).click();
+await page.waitForTimeout(5000);
+await page.screenshot({ path: "../../.impeccable/review/upload-progress.png" });
+await page.waitForURL(/\/a\//, { timeout: 240000 });
+await page.waitForTimeout(3000);
+await page.screenshot({ path: "../../.impeccable/review/upload-workspace.png" });
+console.log("landed", page.url());
+await browser.close();

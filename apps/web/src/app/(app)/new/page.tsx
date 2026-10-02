@@ -59,6 +59,9 @@ export default function NewAnalysisPage() {
   const [mode, setMode] = useState<"script" | "url" | "video">("script");
   const [script, setScript] = useState("");
   const [url, setUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [thumb, setThumb] = useState("");
   const [category, setCategory] = useState<"tech" | "education" | "vlog">("tech");
@@ -72,16 +75,30 @@ export default function NewAnalysisPage() {
   const secs = useMemo(() => estimateSeconds(script, lang), [script, lang]);
   const inScope = secs >= 300 && secs <= 900;
   const urlOk = /(youtu\.be\/|youtube\.com\/(watch\?v=|shorts\/|live\/|embed\/))[A-Za-z0-9_-]{11}/.test(url);
-  const canRun = mode === "url" ? urlOk : mode === "script" && title.trim().length > 3 && words >= 120;
+  const canRun =
+    mode === "url" ? urlOk : mode === "video" ? !!file && title.trim().length > 3 : title.trim().length > 3 && words >= 120;
 
   async function run() {
     setError(null);
     setEvents([]);
     setRunning(true);
     try {
-      const job = mode === "url"
-        ? await api.analyze({ title: "", category, source_url: url.trim(), engine })
-        : await api.analyze({ title: title.trim(), category, script, thumbnail_text: thumb || null, engine });
+      let job;
+      if (mode === "video" && file) {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("title", title.trim());
+        form.append("category", category);
+        form.append("engine", engine);
+        if (thumb) form.append("thumbnail_text", thumb);
+        setUploadPct(0);
+        job = await api.upload(form, setUploadPct);
+        setUploadPct(null);
+      } else {
+        job = mode === "url"
+          ? await api.analyze({ title: "", category, source_url: url.trim(), engine })
+          : await api.analyze({ title: title.trim(), category, script, thumbnail_text: thumb || null, engine });
+      }
       // Show each stage long enough to read, even when the server finishes faster.
       let shown = Promise.resolve();
       const pace = (fn: () => void) => {
@@ -111,7 +128,15 @@ export default function NewAnalysisPage() {
       <div className="grid h-full place-items-center overflow-y-auto px-6 py-10">
         <div className="w-full">
           <p className="mx-auto mb-2 max-w-[560px] truncate text-[13px] text-ink-3">{mode === "url" ? url : title}</p>
-          <StageProgress events={events} error={error} mode={mode === "url" ? "url" : "script"} />
+          {uploadPct !== null && (
+            <div className="mx-auto mb-6 max-w-[560px]">
+              <p className="tnum mb-1.5 text-[13px] text-ink-2">Uploading {file?.name} · {Math.round(uploadPct * 100)}%</p>
+              <div className="h-[5px] rounded-full bg-paper-sunk">
+                <div className="h-full rounded-full bg-ink transition-[width] duration-200" style={{ width: `${uploadPct * 100}%` }} />
+              </div>
+            </div>
+          )}
+          <StageProgress events={events} error={error} mode={mode === "url" ? "url" : mode === "video" ? "video" : "script"} />
           {error && (
             <div className="mx-auto mt-4 max-w-[560px]">
               <button onClick={() => { setEvents([]); setRunning(false); }} className="text-[14px] font-[600] text-ink underline">
@@ -206,13 +231,48 @@ export default function NewAnalysisPage() {
               <p className="mt-2 text-[12.5px] text-ink-3">Works best on 5–15 minute videos. About 20–40 seconds per video.</p>
             </div>
           ) : (
-            <div className="flex flex-1 flex-col items-start justify-center rounded-[6px] border border-dashed border-rule-strong p-8">
-              <p className="text-[16px] font-[620]">Rough-cut upload is next on the build list.</p>
-              <p className="mt-1 max-w-[52ch] text-[14px] text-ink-2">
-                It will transcribe the cut with Whisper and add shot cuts, loudness and on-screen faces to the prediction.
-                For now, paste the transcript under “Script or transcript”, or analyze a published video.
+            <label
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                const f = e.dataTransfer.files?.[0];
+                if (f) setFile(f);
+              }}
+              className={clsx(
+                "flex flex-1 cursor-pointer flex-col items-center justify-center rounded-[8px] border-2 border-dashed p-10 text-center transition-colors duration-150",
+                dragging ? "border-ink bg-paper-sunk" : "border-rule-strong bg-paper-raised hover:border-ink/40",
+              )}
+            >
+              <input
+                type="file"
+                accept="video/*,audio/*,.mkv"
+                className="sr-only"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+              <Film size={30} strokeWidth={1.5} className="text-ink-3" aria-hidden />
+              {file ? (
+                <>
+                  <p className="mt-3 text-[16px] font-[620]">{file.name}</p>
+                  <p className="tnum mt-1 text-[13px] text-ink-3">{(file.size / 1e6).toFixed(1)} MB · click or drop to change</p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-3 text-[16px] font-[620]">Drop your rough cut here, or click to choose</p>
+                  <p className="mt-1 text-[13px] text-ink-3">MP4, MOV, MKV or WebM (or MP3/M4A audio), up to 25 minutes</p>
+                </>
+              )}
+              <p className="mt-5 max-w-[60ch] text-[13.5px] text-ink-2">
+                Before you publish: Retent AI transcribes the cut with Whisper, measures shot cuts and silences from the video
+                itself, predicts the retention curve and flags slow intros, static shots, dead air, repeats and late payoffs, with
+                timestamps you can jump to in your editor.
               </p>
-            </div>
+              <p className="mt-2 text-[12px] text-ink-3">The file stays on this machine; only the extracted audio is sent for transcription.</p>
+            </label>
           )}
         </section>
 

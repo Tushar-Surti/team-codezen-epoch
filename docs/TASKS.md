@@ -14,14 +14,14 @@ Update this file whenever a task changes state; it is the single source of truth
 |---|---|---|---|
 | 0. Foundations | 6 | 3 | 0 |
 | 1. Data | 4 | 6 | 1 |
-| 2. Model & evaluation | 10 | 1 | 6 |
+| 2. Model & evaluation | 10 | 2 | 5 |
 | 3. Core loop | 12 | 0 | 1 |
-| 4. Differentiators | 3 | 4 | 7 |
+| 4. Differentiators | 4 | 4 | 6 |
 | 5. Validation & discovery | 2 | 0 | 3 |
 | 6. Finish | 2 | 1 | 5 |
 | 7. Pitch kit | 1 | 2 | 3 |
 | 8. Showstoppers | 1 | 0 | 4 |
-| **Total** | **41** | **17** | **30** |
+| **Total** | **42** | **18** | **28** |
 
 ---
 
@@ -75,7 +75,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | Baselines: position-only, Claude zero-shot, Groq zero-shot, random | Claude | ✅ | Position, rules-v0, random, and a zero-shot LLM (Groq gpt-oss-120b) head-to-head on a fixed sample |
 | `eval_report.json` + `norms.json` (`ml/eval/run.py`) | Claude | 🟡 | `eval_report.json` done (GroupKFold by channel, 95% CIs, per-video overlays); norms still to do |
 | Category norms on each flag (`Flag.norm`) | Claude | ⬜ | "Top Hindi tech reviews hook by 0:08" |
-| Missing flags: chapter skip, visual/audio monotony | Claude | ⬜ | Monotony needs video mode |
+| Missing flags: chapter skip, visual/audio monotony | Claude | 🟡 | Static shot and dead air done (rough-cut mode); chapter skip left |
 
 ## Phase 3: Core loop
 
@@ -101,7 +101,7 @@ Update this file whenever a task changes state; it is the single source of truth
 |---|---|---|---|---|
 | A1 | Upload `.txt / .docx / .srt / .vtt` | Claude | ⬜ | Paste works today |
 | A2 | Thumbnail image read by Claude vision; candidate titles | Claude | ⛔ | Thumbnail *text* field works today |
-| A3 | Video mode: Whisper, shot cuts, loudness, face, OCR | Claude | ⬜ | |
+| A3 | Rough-cut upload (MP4/MOV/MKV/WebM or audio): Whisper transcript + ffmpeg shot cuts and silences; static-shot and dead-air flags; synced player; cut/silence lanes | Claude | ✅ | Faces/on-screen text not yet; visual fixes are not simulated (labelled) |
 | A4 | Public YouTube URL mode | Claude | ✅ | Paste any link: yt-dlp details + Most replayed + chapters; captions or Groq Whisper fallback; ~20–40 s; "vs YouTube" reveal with live score |
 | C3 | Open-loop arcs | Claude | 🟡 | Lane works; LLM detection will find far more loops |
 | C4 | Redundancy map view (recurrence plot) | You + Claude | 🟡 | Data computed in every analysis; no UI yet |

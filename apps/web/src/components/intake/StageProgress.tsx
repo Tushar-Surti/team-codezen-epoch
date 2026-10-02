@@ -16,6 +16,12 @@ const SCRIPT_STAGES: { key: StageEvent["stage"]; label: string }[] = [
   { key: "explain", label: "Explaining each drop" },
   { key: "fix", label: "Writing and simulating fixes" },
 ];
+const VIDEO_STAGES: { key: StageEvent["stage"]; label: string }[] = [
+  { key: "ingest", label: "Reading the rough cut" },
+  { key: "transcribe", label: "Transcribing the audio" },
+  { key: "segment", label: "Measuring shot cuts and silences" },
+  ...SCRIPT_STAGES.slice(2),
+];
 const URL_STAGES: { key: StageEvent["stage"]; label: string }[] = [
   { key: "ingest", label: "Opening the video on YouTube" },
   { key: "transcribe", label: "Getting the transcript" },
@@ -23,8 +29,8 @@ const URL_STAGES: { key: StageEvent["stage"]; label: string }[] = [
 ];
 
 /** The analysis arrives stage by stage; a pen line draws across the page as it goes. */
-export function StageProgress({ events, error, mode = "script" }: { events: StageEvent[]; error: string | null; mode?: "script" | "url" }) {
-  const STAGES = mode === "url" ? URL_STAGES : SCRIPT_STAGES;
+export function StageProgress({ events, error, mode = "script" }: { events: StageEvent[]; error: string | null; mode?: "script" | "url" | "video" }) {
+  const STAGES = mode === "url" ? URL_STAGES : mode === "video" ? VIDEO_STAGES : SCRIPT_STAGES;
   const scope = useRef<SVGSVGElement>(null);
   const prev = useRef(0);
   const reached = Math.max(-1, ...events.map((e) => STAGES.findIndex((s) => s.key === e.stage)));

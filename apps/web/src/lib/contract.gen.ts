@@ -374,7 +374,7 @@ export type Size = number;
  * Row-major similarity values in [0, 1].
  */
 export type Values = number[];
-export type Key = "wpm" | "info_rate" | "filler_rate" | "cut_rate" | "loudness" | "pitch_var" | "face";
+export type Key = "wpm" | "info_rate" | "filler_rate" | "cut_rate" | "silence" | "loudness" | "pitch_var" | "face";
 export type Label3 = string;
 export type Unit = string;
 /**

@@ -52,6 +52,8 @@ FAMILIES: dict[str, tuple[str, str]] = {
     "loop_close": ("payoff", "Pays off a loop"),
     "complexity": ("jargon", "Dense jargon"),
     "since_last_hook": ("no_hook", "Long stretch without a hook"),
+    "static_shot": ("static", "No visual change"),
+    "silence": ("dead_air", "Dead air"),
 }
 
 
@@ -108,6 +110,8 @@ class HeuristicInterest:
         "loop_close": (0.0, 1.0, 0.20),
         "complexity": (0.08, 0.08, -0.20),
         "since_last_hook": (40.0, 30.0, -0.20),
+        "static_shot": (0.0, 1.0, -0.60),
+        "silence": (0.0, 0.25, -0.70),
     }
 
     def contributions(self, bins: np.ndarray) -> np.ndarray:
@@ -149,9 +153,12 @@ class TrainedInterest:
         contrib = self.booster.predict(bins[:, self.cols], pred_contrib=True)
         out[:, self.cols] = contrib[:, :-1]
         out[:, BIN_FEATURES.index("pct")] += self.prior[: bins.shape[0]] + contrib[:, -1]
+        heur = HeuristicInterest().contributions(bins)
         if self.expert_weight and self.expert_cols:  # same expert prior as training (rare event cues)
-            heur = HeuristicInterest().contributions(bins)
             out[:, self.expert_cols] += self.expert_weight * heur[:, self.expert_cols]
+        # Video signals (rough-cut mode) have no training data yet: expert prior only, at half weight.
+        media_cols = [BIN_FEATURES.index(c) for c in ("static_shot", "silence")]
+        out[:, media_cols] += 0.5 * heur[:, media_cols]
         if self.smooth > 1:  # same moving average as training, per feature (keeps contributions additive)
             w = self.smooth
             out = np.stack([np.convolve(np.pad(c, w // 2, mode="edge"), np.ones(w) / w, mode="valid")

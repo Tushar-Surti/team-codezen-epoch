@@ -32,6 +32,9 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
   const tabStop = byTime.some((f) => f.id === selectedFlagId) ? selectedFlagId : byTime[0]?.id;
   const promise = analysis.promises[0];
   const pace = analysis.pacing.find((p) => p.key === "info_rate");
+  const cuts = analysis.pacing.find((p) => p.key === "cut_rate");
+  const silence = analysis.pacing.find((p) => p.key === "silence");
+  const maxCuts = cuts ? Math.max(1, ...cuts.values) : 1;
   const sections = analysis.sections.filter((s) => s.kind === "chapter").length
     ? analysis.sections.filter((s) => s.kind === "chapter")
     : analysis.sections;
@@ -179,6 +182,35 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
                   {s.title}
                 </span>
               ))}
+            </div>
+          )}
+
+          {/* Rough-cut lanes: shot cuts per minute and silence, measured from the video */}
+          {cuts && (
+            <div className="relative" style={{ height: LANE_H }}>
+              <LaneLabel>Shot cuts</LaneLabel>
+              <svg className="absolute inset-0" width={width} height={LANE_H} aria-hidden>
+                {cuts.values.map((v, i) => {
+                  const x0 = x((i / cuts.values.length) * duration);
+                  const w = Math.max(1, x(((i + 1) / cuts.values.length) * duration) - x0 - 1);
+                  const h = (v / maxCuts) * (LANE_H - 6);
+                  return <rect key={i} x={x0} y={LANE_H - 3 - h} width={w} height={h} rx={1} fill="var(--ink-2)" opacity={v ? 0.75 : 0} />;
+                })}
+              </svg>
+            </div>
+          )}
+          {silence && silence.values.some((v) => v > 0) && (
+            <div className="relative" style={{ height: LANE_H - 8 }}>
+              <LaneLabel>Silence</LaneLabel>
+              <svg className="absolute inset-0" width={width} height={LANE_H - 8} aria-hidden>
+                {silence.values.map((v, i) =>
+                  v > 0 ? (
+                    <rect key={i} x={x((i / silence.values.length) * duration)} y={4}
+                      width={Math.max(2, x(((i + 1) / silence.values.length) * duration) - x((i / silence.values.length) * duration))}
+                      height={LANE_H - 16} rx={2} fill="var(--pen)" opacity={Math.min(0.85, 0.2 + v / 100)} />
+                  ) : null,
+                )}
+              </svg>
             </div>
           )}
 

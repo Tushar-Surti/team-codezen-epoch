@@ -51,6 +51,25 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(req),
     }).then((r) => json<JobAccepted>(r)),
+  upload: (form: FormData, onProgress: (fraction: number) => void) =>
+    new Promise<JobAccepted>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${API_URL}/api/analyze/upload`);
+      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+      xhr.onload = () => {
+        let body: { detail?: string } & Partial<JobAccepted> = {};
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch {
+          /* non-JSON error */
+        }
+        if (xhr.status >= 200 && xhr.status < 300) resolve(body as JobAccepted);
+        else reject(new Error(body.detail ?? `Upload failed (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error("Upload failed: is the API running?"));
+      xhr.send(form);
+    }),
+  mediaUrl: (analysisId: string) => `${API_URL}/api/media/${analysisId}`,
   events: (jobId: string, onStage: (ev: StageEvent) => void, onEnd: (error: string | null) => void) => {
     const es = new EventSource(`${API_URL}/api/jobs/${jobId}/events`);
     es.addEventListener("stage", (e) => onStage(JSON.parse((e as MessageEvent).data)));

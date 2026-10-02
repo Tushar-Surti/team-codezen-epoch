@@ -370,6 +370,58 @@ def detect_open_loops(fs: FeatureSet) -> tuple[list[Candidate], list[OpenLoop]]:
     return cands, loops
 
 
+def _sentence_at(fs: FeatureSet, t: float) -> int:
+    return min(range(len(fs.sentences)), key=lambda i: abs((fs.sentences[i].start + fs.sentences[i].end) / 2 - t))
+
+
+def detect_static_shots(fs: FeatureSet) -> list[Candidate]:
+    """Rough-cut mode: long stretches with no shot change (from ffmpeg scene detection)."""
+    media = (fs.extras or {}).get("media")
+    if not media:
+        return []
+    dur = float(media.get("duration") or fs.duration)
+    bounds = [0.0, *sorted(t for t in media.get("cuts", []) if 0 < t < dur), dur]
+    out = []
+    for a, b in sorted(zip(bounds[:-1], bounds[1:]), key=lambda ab: ab[0] - ab[1]):
+        if b - a < 35.0 or len(out) >= 3:
+            continue
+        idx = [i for i, s in enumerate(fs.sentences) if s.end > a and s.start < b] or [_sentence_at(fs, (a + b) / 2)]
+        mid = (a + b) / 2
+        out.append(Candidate(
+            FlagKind.monotony, idx, f"No visual change {fmt_time(a)}–{fmt_time(b)}",
+            f"One unbroken shot for {b - a:.0f} seconds. With nothing new to look at, attention drifts even when the talk is good.",
+            ["static_shot"],
+            ops=[EditOp(op=EditOpKind.interrupt, sentence_ids=[fs.sentences[_sentence_at(fs, mid)].id],
+                        note=f"Add a B-roll cut, a punch-in or on-screen text around {fmt_time(mid)}.")],
+            fix_title=f"Break up the shot around {fmt_time(mid)}",
+            fix_rationale="A visual change every 10–20 seconds resets attention.", confidence=0.6,
+        ))
+    return out
+
+
+def detect_dead_air(fs: FeatureSet) -> list[Candidate]:
+    """Rough-cut mode: silences of 3 s or more (from ffmpeg silencedetect)."""
+    media = (fs.extras or {}).get("media")
+    if not media:
+        return []
+    dur = float(media.get("duration") or fs.duration)
+    out = []
+    for s0, s1 in sorted(media.get("silences", []), key=lambda x: x[0] - x[1]):
+        if s1 - s0 < 3.0 or s0 < 2.0 or s1 > dur - 2.0 or len(out) >= 3:
+            continue
+        i = _sentence_at(fs, (s0 + s1) / 2)
+        out.append(Candidate(
+            FlagKind.low_density, [i], f"{s1 - s0:.0f} s of dead air at {fmt_time(s0)}",
+            "Silence with nothing happening on screen is where thumbs start scrolling.",
+            ["silence"],
+            ops=[EditOp(op=EditOpKind.interrupt, sentence_ids=[fs.sentences[i].id],
+                        note=f"Jump-cut the pause at {fmt_time(s0)}–{fmt_time(s1)}.")],
+            fix_title=f"Jump-cut the pause at {fmt_time(s0)}", fix_rationale="Tighter pacing, same content.",
+            confidence=0.75,
+        ))
+    return out
+
+
 def detect_complexity(fs: FeatureSet, category: str) -> list[Candidate]:
     if category != "education":
         return []
@@ -417,6 +469,8 @@ def build_flags(fs: FeatureSet, pred: Prediction, title: str, category: str
     loop_cands, loops = detect_open_loops(fs)
     cands += loop_cands[:1]
     cands += detect_complexity(fs, category)
+    cands += detect_static_shots(fs)
+    cands += detect_dead_air(fs)
 
     flags: list[Flag] = []
     fixes: list[Fix] = []

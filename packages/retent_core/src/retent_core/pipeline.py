@@ -85,19 +85,20 @@ def analyze_sentences(
     analysis_id: str | None = None,
     semantic=None,
     writer=None,
+    media: dict | None = None,
 ) -> Analysis:
     """`semantic` is the LLM read of the script (retent_core.semantic.Semantic) or None for keyword cues.
     `writer(flags, fixes, payoff_id) -> fixes` fills in fix text (an LLM call) before fixes are simulated."""
     model = model or default_model()
     tail = max(0.0, meta.duration_seconds - max(x.end for x in sents)) if timing == "measured" and meta.duration_seconds else 0.0
-    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, semantic=semantic, tail=tail)
+    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, semantic=semantic, tail=tail, media=media)
     fs, pred = base.features, base.prediction
     flags, fixes, promises, loops = build_flags(fs, pred, meta.title, meta.category)
 
     payoff_id = None
     if promises and promises[0].paid_off is not None:
         payoff_id = next((s.id for s in sents if s.start == promises[0].paid_off), None)
-    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, payoff_id, semantic=semantic, tail=tail)
+    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, payoff_id, semantic=semantic, tail=tail, media=media)
 
     warnings_extra: list[Warning_] = []
     if writer is not None and fixes:
@@ -111,7 +112,7 @@ def analyze_sentences(
     for fx in fixes:
         try:
             after = run(apply_ops(sents, fx.ops), meta.title, meta.thumbnail_text, meta.category, model, payoff_id,
-                        semantic=edited_semantic(semantic, fx.ops), tail=tail)
+                        semantic=edited_semantic(semantic, fx.ops), tail=tail, media=media)
             simulated.append(fx.model_copy(update={"delta": delta(base, after)}))
         except ValueError:
             simulated.append(fx)
@@ -148,6 +149,12 @@ def analyze_sentences(
         PacingLane(key="info_rate", label="New information", unit="% new words", values=[round(float(v) * 100, 1) for v in fs.b("novelty")]),
         PacingLane(key="filler_rate", label="Fillers", unit="% of words", values=[round(float(v) * 100, 1) for v in fs.b("filler_rate")]),
     ]
+    if media:
+        dur = float(media.get("duration") or fs.duration)
+        cuts = [t for t in media.get("cuts", []) if 0 < t < dur]
+        per_bin = np.histogram(cuts, bins=fs.bin_edges)[0] / np.maximum(np.diff(fs.bin_edges) / 60.0, 1e-6)
+        pacing.append(PacingLane(key="cut_rate", label="Shot cuts", unit="cuts/min", values=[round(float(v), 1) for v in per_bin]))
+        pacing.append(PacingLane(key="silence", label="Silence", unit="% of time", values=[round(float(v) * 100, 1) for v in fs.b("silence")]))
     red = redundancy_matrix(fs)
 
     if semantic is not None and semantic.sections:

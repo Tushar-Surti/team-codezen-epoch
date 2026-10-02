@@ -35,7 +35,8 @@ MODELS = ROOT / "models"
 # The residual model only sees text features and is heavily regularized, so with little data it
 # stays near the prior instead of chasing noise, and every gain over "position" comes from the text.
 POSITION_COLS = ("pct", "t_log", "is_intro", "remaining_s")
-TEXT_COLS = tuple(c for c in BIN_FEATURES if c not in POSITION_COLS)
+MEDIA_COLS = ("static_shot", "silence")  # only exist for uploaded videos; never in the public training set
+TEXT_COLS = tuple(c for c in BIN_FEATURES if c not in POSITION_COLS + MEDIA_COLS)
 TEXT_IDX = [BIN_FEATURES.index(c) for c in TEXT_COLS]
 PARAMS = dict(objective="regression", n_estimators=200, learning_rate=0.03, num_leaves=7,
               min_child_samples=60, subsample=0.8, subsample_freq=1, colsample_bytree=0.8,

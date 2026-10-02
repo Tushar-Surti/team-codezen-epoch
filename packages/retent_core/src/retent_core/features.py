@@ -30,7 +30,10 @@ SENTENCE_FEATURES = (
     "promise_sim", "topic_sim", "cta", "sponsor", "outro", "greeting", "hook", "loop_open",
     "loop_close", "complexity",
 )
-BIN_FEATURES = SENTENCE_FEATURES + ("pct", "t_log", "is_intro", "since_last_hook", "remaining_s")
+# Measured from an uploaded video (rough-cut mode); zero for scripts and transcripts.
+MEDIA_FEATURES = ("static_shot", "silence")
+BIN_FEATURES = SENTENCE_FEATURES + ("pct", "t_log", "is_intro", "since_last_hook", "remaining_s") + MEDIA_FEATURES
+STATIC_SHOT_S = 30.0  # a single shot longer than this reads as visually static
 
 
 class Embedder(Protocol):
@@ -170,7 +173,7 @@ def _sentence_features(
 
 def _bin_matrix(sentences: list[TimedSentence], sent: np.ndarray, duration: float) -> tuple[np.ndarray, np.ndarray]:
     edges = np.linspace(0.0, duration, N_BINS + 1)
-    bins = np.zeros((N_BINS, len(BIN_FEATURES)), dtype=np.float32)
+    bins = np.zeros((N_BINS, len(BIN_FEATURES)), dtype=np.float32)  # media columns filled in build_features
     k = len(SENTENCE_FEATURES)
     starts = np.array([s.start for s in sentences])
     ends = np.array([s.end for s in sentences])
@@ -200,6 +203,21 @@ def _bin_matrix(sentences: list[TimedSentence], sent: np.ndarray, duration: floa
     return bins, edges
 
 
+def _apply_media(bins: np.ndarray, edges: np.ndarray, media: dict) -> None:
+    """media = {"duration": s, "cuts": [t, ...], "silences": [[start, end], ...]} from ffmpeg."""
+    dur = float(media.get("duration") or edges[-1])
+    cuts = sorted(t for t in media.get("cuts", []) if 0 < t < dur)
+    bounds = [0.0, *cuts, dur]
+    shots = [(a, b) for a, b in zip(bounds[:-1], bounds[1:]) if b - a >= STATIC_SHOT_S]
+    col_static = BIN_FEATURES.index("static_shot")
+    col_silence = BIN_FEATURES.index("silence")
+    for k in range(len(edges) - 1):
+        lo, hi = edges[k], edges[k + 1]
+        width = max(hi - lo, 1e-6)
+        bins[k, col_static] = sum(max(0.0, min(b, hi) - max(a, lo)) for a, b in shots) / width
+        bins[k, col_silence] = sum(max(0.0, min(e, hi) - max(s, lo)) for s, e in media.get("silences", [])) / width
+
+
 def build_features(
     sentences: list[TimedSentence],
     title: str,
@@ -207,6 +225,7 @@ def build_features(
     embedder: Embedder | None = None,
     semantic=None,
     duration: float | None = None,
+    media: dict | None = None,
 ) -> FeatureSet:
     """`duration` is the real video length when known (captions often end before the outro),
     so the 100 bins line up with YouTube's own 1% grid."""
@@ -221,7 +240,10 @@ def build_features(
         _apply_semantic(sentences, sent, semantic)
     duration = max(duration or 0.0, max(s.end for s in sentences))
     bins, edges = _bin_matrix(sentences, sent, duration)
-    return FeatureSet(sentences, duration, sent, bins, sim, vectors, title_vec, edges, {"semantic": semantic})
+    if media:
+        _apply_media(bins, edges, media)
+    return FeatureSet(sentences, duration, sent, bins, sim, vectors, title_vec, edges,
+                      {"semantic": semantic, "media": media})
 
 
 def redundancy_matrix(fs: FeatureSet, size: int = 48) -> np.ndarray:

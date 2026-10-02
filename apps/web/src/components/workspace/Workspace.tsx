@@ -16,6 +16,7 @@ import { FixQueue } from "./FixQueue";
 import { Lanes } from "./Lanes";
 import { MetricsLedger } from "./MetricsLedger";
 import { ProjectBar } from "./ProjectBar";
+import { RoughCutPlayer } from "./RoughCutPlayer";
 import { YouTubeCheck } from "./YouTubeCheck";
 import { ScriptPage } from "./ScriptPage";
 
@@ -141,6 +142,11 @@ export function Workspace({ id }: { id: string }) {
 
         {/* Right: metrics ledger + fix queue */}
         <aside className="flex min-h-0 flex-col border-l border-rule bg-paper" aria-label="Metrics and fixes">
+          {analysis.meta.input_mode === "video" && (
+            <div className="border-b border-rule px-5 pt-4 pb-3">
+              <RoughCutPlayer analysisId={analysis.id} />
+            </div>
+          )}
           <div className="border-b border-rule px-5 pt-4 pb-3">
             <MetricsLedger analysis={analysis} sim={sim} draftKey={draft?.key ?? null} />
           </div>
