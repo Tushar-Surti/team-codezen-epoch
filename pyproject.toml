@@ -1,0 +1,13 @@
+# Virtual uv workspace root: shared core, API service, offline ML pipeline.
+[tool.uv.workspace]
+members = ["packages/retent_core", "services/api", "ml"]
+
+[tool.uv.sources]
+retent-core = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["packages/retent_core/tests", "services/api/tests", "ml/tests"]

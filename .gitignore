@@ -1,0 +1,40 @@
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# node
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# data (shared via HF dataset repo, not git)
+data/
+!data/.gitkeep
+*.parquet
+*.mp4
+*.webm
+*.m4a
+*.wav
+
+# impeccable local state
+.impeccable/config.local.json
+.impeccable/review/
+.impeccable/live/
+
+# os/editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/settings.json

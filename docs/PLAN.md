@@ -1,8 +1,9 @@
-# Holdline (working name) — Retention Predictor: Build Plan v2
+# Retent AI — Retention Predictor: Build Plan v2
 
-> *See where your video loses its hold, before you publish.*
+> *Predict the drop. Fix the video. Keep them watching.*
 > **Status: DRAFT v2 — waiting for your review. No code until you approve.**
 > **Changes from v1:** no time limit, so the scope is now "best possible"; Claude and Groq are both supported; all ground truth comes from **public data** (no channel access needed); new name options; new features (Channel X-Ray, Retention Import, Title Fit, Chapter Advisor, Category Norms); a judge Q&A prep section and a submission kit.
+> **Changes in v2.1:** the UI must be beautiful with standout animation, so there is a motion stack (GSAP, Lenis, Motion) and a list of signature animations (§8.1); a plan for who works on which machine and what happens first (§9).
 
 ---
 
@@ -10,20 +11,21 @@
 
 | Name | Why it works | Watch-out |
 |---|---|---|
-| **Holdline** ⭐ *recommended* | The retention curve *is* the line, and "hold" is what retention measures. Short, product-like, nothing with that name in this space | Purely English |
+| **Retent AI** ✅ *chosen* | Says what it does; tagline "Predict the drop. Fix the video. Keep them watching." | Working name, may change |
+| Holdline | The retention curve *is* the line, and "hold" is what retention measures | Purely English |
 | **Tikaav (टिकाव)** | Hindi for *staying power*. A bilingual name that matches the EN + HI scope and will stick with Indian judges | Non-Hindi speakers may stumble on it |
 | **Cliffwatch** | Keeping watch for the retention *cliffs*; says exactly what the product does | Slightly ominous |
 | **Payoff** | Named after the core insight: viewers stay until the title's promise pays off | Very common word, hard to own |
 | **Forecut** | *Forecast + cut*: predicts, then tells you what to cut | Sounds close to **FireCut**, an existing AI editing plugin |
 | **Premortem** | v1 name; a "premortem for your video" | Morbid; not obviously about video |
 
-The rest of this document uses **Holdline**; renaming later is just a find-and-replace.
+**Chosen for now: Retent AI** ("Predict the drop. Fix the video. Keep them watching."). The name may change later; it lives in one config constant, so renaming is cheap.
 
 ---
 
 ## 1. The idea
 
-Holdline reads a **script (before you shoot)** or a **rough cut (before you publish)** and predicts the audience-retention curve. It flags each likely drop-off with **quoted evidence and the signals behind it**, writes the **specific edit** that fixes it, and **re-runs the prediction** on the edited version to show what the edit is worth. It is checked against **real public retention data**, including a blind test a judge can run on any YouTube video or channel they choose.
+Retent AI reads a **script (before you shoot)** or a **rough cut (before you publish)** and predicts the audience-retention curve. It flags each likely drop-off with **quoted evidence and the signals behind it**, writes the **specific edit** that fixes it, and **re-runs the prediction** on the edited version to show what the edit is worth. It is checked against **real public retention data**, including a blind test a judge can run on any YouTube video or channel they choose.
 
 ### Three commitments
 1. **The model predicts, the LLMs only read the script.** The curve comes from a trained, validated model. Claude and Groq models pull semantic features out of the script and write the fixes; they never draw the curve. Every flag can be traced to measured signals.
@@ -31,7 +33,7 @@ Holdline reads a **script (before you shoot)** or a **rough cut (before you publ
 3. **Report accuracy honestly.** Results are measured on channels the model never saw and compared with simple baselines, including "just ask Claude" and "just ask Groq". We show failure cases, live blind tests, and confidence intervals wherever the sample is small. Every number in the product is computed; nothing is typed in by hand.
 
 ### How we beat other submissions for the same PS
-| Typical submission | Holdline |
+| Typical submission | Retent AI |
 |---|---|
 | Asks an LLM where viewers drop off and draws the answer | A hazard model trained on about 1,200 public videos; the LLMs only extract features |
 | Generic advice ("intro is long") | Timestamped flag with a quote, the contributing signals, viewers lost per 1,000, and how this compares with the category norm |
@@ -127,7 +129,7 @@ Tiers: **Core** = must be flawless · **Differentiator** = why we win · **Shows
 ### G. Showstoppers (after Core and Differentiators are polished)
 | # | Feature |
 |---|---|
-| G1 | **Browser extension:** on any YouTube watch page, overlay Holdline's prediction on the real "Most replayed" curve. Competitor research in one click |
+| G1 | **Browser extension:** on any YouTube watch page, overlay Retent AI's prediction on the real "Most replayed" curve. Competitor research in one click |
 | G2 | **Connect your channel** (YouTube Analytics OAuth) for exact retention curves. Built for creators and judges who have a channel; we can't test it ourselves without one |
 | G3 | **Shorts candidates:** predicted spike moments become suggested Shorts cuts |
 | G4 | **Hindi interface** (हिंदी UI toggle) |
@@ -165,7 +167,7 @@ script / transcript ─► sentences with timestamps (ASR/captions, or estimated
 4. **Explanations:** SHAP values grouped into families of signals feed the flag engine. The LLM only rephrases facts we hand it.
 5. **Counterfactual edits:** edit the sentence list, recompute timing and features, re-run, and report viewers at the payoff and watch time, plus APV.
 
-**Train/serve parity:** the same feature package (`ml/holdline_features`) runs in training and in the API. Prompts are versioned, and a model card records which provider, model and prompt version produced the training labels.
+**Train/serve parity:** the same feature package (`ml/retent_features`) runs in training and in the API. Prompts are versioned, and a model card records which provider, model and prompt version produced the training labels.
 
 **Limits we state openly** (in the UI and the pitch)
 - "Most replayed" measures *relative interest*, not how many viewers remain. It gives us the **shape** of the curve. The **absolute level** comes from a smaller set of real Studio curves and is shown with confidence intervals.
@@ -249,7 +251,7 @@ One command, `ml/eval/run.py`, produces `eval_report.json`; the Validation Lab a
 │ Ingest ─ parsers · yt-dlp · Data API · ffmpeg            LLMRouter ─ Claude · Groq          │
 │ Media ─ PySceneDetect · librosa · MediaPipe · OCR        Retention engine ─ LightGBM + hazard + SHAP │
 │ Segmenter ─ sentences → bins · topics · chapters          Flag engine · Edit generator       │
-│ Features ─ holdline_features (shared with training)       Counterfactual simulator · Exporters│
+│ Features ─ retent_features (shared with training)       Counterfactual simulator · Exporters│
 │ Digitizer ─ Studio screenshot → curve                     Validation · X-Ray · Norms services│
 │ Job runner (async, SSE) ─ SQLite (SQLModel) · file store                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -268,7 +270,11 @@ One command, `ml/eval/run.py`, produces `eval_report.json`; the Validation Lab a
 | Styling | Tailwind CSS with tokens from impeccable's DESIGN.md | The look comes from the design process, not a kit's defaults |
 | Charts | **D3 + custom SVG/Canvas** | Bands, ghost curves, arcs and the recurrence matrix are custom marks |
 | Editor | **CodeMirror 6** | Precise range decorations for the live underlines |
-| Motion | Motion (formerly Framer Motion) | Curve draw-in, ghost-curve morph |
+| Motion: timelines and SVG | **GSAP** (ScrollTrigger, DrawSVG, MorphSVG, SplitText, Flip; every plugin is free, including commercial use, since 3.13) | Drawing curves, morphing the ghost curve, scroll-driven landing story, ranked cards rearranging |
+| Motion: React UI | **Motion** (formerly Framer Motion) | Panels entering and leaving, a flag card expanding into the inspector, springs, hover and press feedback |
+| Smooth scroll | **Lenis** (synced with GSAP ScrollTrigger) | Smooth scrolling on the landing page and Read pages only (see §8.1) |
+| Hero visual (optional) | OGL or React Three Fiber, only if the chosen visual direction needs WebGL | A living retention-curve hero; skipped if the direction doesn't call for it |
+| Number animation | Motion values / GSAP tweens | Metric and delta counters that tick up and down |
 | Client state | TanStack Query + Zustand | Server cache plus one playhead and selection shared by every panel |
 | API | **FastAPI (Python 3.12) + Pydantic v2** | ML ecosystem, typed schemas → TypeScript client |
 | Jobs | Async runner inside the API, SSE progress | Live progress without extra infrastructure |
@@ -283,7 +289,7 @@ One command, `ml/eval/run.py`, produces `eval_report.json`; the Validation Lab a
 
 ### Repo layout
 ```
-apps/web/  services/api/  ml/holdline_features/  ml/{collect,label,train,eval}/
+apps/web/  services/api/  ml/retent_features/  ml/{collect,label,train,eval}/
 models/  data/ (gitignored)  docs/PLAN.md  PRODUCT.md  DESIGN.md
 ```
 
@@ -296,7 +302,36 @@ models/  data/ (gitignored)  docs/PLAN.md  PRODUCT.md  DESIGN.md
 2. `/impeccable shape` on the **Workspace** (an *Operate* surface) → new-work concept seed → **you pick the visual direction** → `DESIGN.md`.
 3. Landing page (*Persuade*) and Validation Lab / Norms (*Read*) in the same visual style.
 4. Build code-first. The craft floor applies; the detector hook runs after every UI edit.
-5. Finish: `critique` → `audit` (accessibility AA, keyboard-operable timeline, responsive) → `harden` (every state) → `polish`, in bounded passes.
+5. Motion passes: `/impeccable animate` (purposeful motion), `/impeccable delight` (memorable touches), and `/impeccable overdrive` on the landing hero and the blind-test reveal.
+6. Finish: `critique` → `audit` (accessibility AA, keyboard-operable timeline, responsive, performance) → `harden` (every state) → `polish`, in bounded passes.
+
+### 8.1 Visual and motion ambition
+
+**Binding requirement from you:** the UI must be **beautiful, good-looking and attractive, with high-quality animation**. It is recorded in PRODUCT.md under Brand Commitments, so impeccable treats it as non-negotiable. The aim is a product that looks award-worthy in screenshots *and* feels smooth in the live demo.
+
+**Motion rules** (so the animation impresses without getting in the way)
+- **Motion must explain something.** Every animation shows a change in the data (a curve rising after an edit, a promise being paid off, a loop closing). Nothing animates only to decorate.
+- **Two energy levels:**
+  - *Persuade and Read pages* (landing, Validation Lab, Category Norms) go big: scroll-driven storytelling with GSAP ScrollTrigger, pinned sections, SplitText headline reveals, and Lenis smooth scroll.
+  - *Operate pages* (Workspace, Simulator, Editor) stay fast and precise: animations of 150–300 ms, springs, shared-element transitions with Motion, and native scrolling. Lenis is off here because it fights the nested scroll areas in the timeline and transcript.
+- **Performance:** animate only transform and opacity. Dense marks (the redundancy matrix, waveforms) go on Canvas. Target is 60 fps on a MacBook Air M3. Durations and easing curves are shared tokens in DESIGN.md.
+- **Accessibility:** `prefers-reduced-motion` swaps every animation for a fade or an instant change. Nothing important is conveyed only through motion.
+
+**Signature animated moments**
+| # | Moment | Where | How |
+|---|---|---|---|
+| 1 | **Script becomes a curve:** while you scroll, a script turns into a retention curve, its cliffs light up, an edit is applied and the curve rises | Landing hero / story | GSAP ScrollTrigger (pinned) + MorphSVG + Lenis |
+| 2 | **Curve draws itself** as the analysis streams in stage by stage; the uncertainty band fades in after it | Workspace | GSAP DrawSVG, driven by SSE stage events |
+| 3 | **Ghost-curve morph:** applying an edit morphs the curve to its new shape while the deltas count up | Simulator | GSAP MorphSVG + number tweens |
+| 4 | **Flag card → inspector:** a flag expands smoothly into the full inspector | Workspace | Motion `layoutId` |
+| 5 | **Playhead scrub:** a spring-damped playhead; the transcript follows with a highlight sweep | Workspace | Motion springs + GSAP |
+| 6 | **Promise Ledger:** each promise's debt bar fills over time, then snaps shut with a small pulse when the promise is paid off | Workspace lane | GSAP timeline |
+| 7 | **Open-loop arcs** draw from where each loop opens to where it closes | Workspace lane | GSAP DrawSVG |
+| 8 | **Blind-test reveal:** the actual curve sweeps in over the prediction, then the score counts up (the demo's high point) | Blind Test | GSAP timeline + SplitText |
+| 9 | **Hook Lab ranking:** engine-tagged cards rearrange into ranked order once the model scores them | Hook Lab | GSAP Flip |
+| 10 | **Analysis stages:** each pipeline step (transcribe → segment → read → predict → explain) animates as it completes | Intake → Workspace | Motion |
+
+The visual world itself (palette, type, layout character) is still chosen with you in impeccable's direction workshop. This section only fixes how ambitious the motion must be and which tools we use.
 
 **Screens**
 | Screen | Mode | Purpose |
@@ -317,13 +352,50 @@ models/  data/ (gitignored)  docs/PLAN.md  PRODUCT.md  DESIGN.md
 
 ---
 
-## 9. Build phases
+## 9. Team, machines and what comes first
+
+### 9.1 Who works on which machine
+| Machine | Strengths | Limits | Best used for |
+|---|---|---|---|
+| **Your MacBook Air M3, 16 GB** | Fast, quiet, great screen, hardware video decoding | No fan, so it slows down under long heavy jobs; 16 GB is shared between CPU and GPU | **Design and UI lead:** impeccable sessions, frontend, API, LLM router. **This is the demo machine.** At runtime it only needs Groq (ASR), the Claude and Groq APIs, a small embedding model on Apple's GPU, and LightGBM on the CPU, all of which fit easily |
+| **Teammates' Windows laptops, RTX 5050 8 GB VRAM, 24 GB RAM** | CUDA GPU, more RAM, can run jobs for hours | Windows tooling quirks; RTX 50-series GPUs need recent CUDA builds | **Data and ML:** long-running collection (each teammate's own home connection spreads out YouTube's rate limits), local GPU Whisper for videos without captions, embedding about 1,200 videos, video features for D1-media, training and parameter sweeps, the neural challenger model |
+
+**Suggested roles** (assuming two teammates; a third would take the API pipeline and the digitizer)
+- **You (Mac):** product and UI lead. You drive the impeccable sessions with me, own the frontend, wire up the API, and present the demo.
+- **Teammate A (Windows GPU):** data lead. Collectors, SponsorBlock, digitizing D2 screenshots, data card.
+- **Teammate B (Windows GPU):** ML lead. Feature package, embeddings, ASR, video features, training, evaluation, model card.
+
+**Windows GPU setup (checked in Phase 0)**
+- Run the Python/ML pipeline in **WSL2 (Ubuntu)**; native Windows is only for the browser.
+- **PyTorch 2.7 or newer with CUDA 12.8 (`cu128`) wheels.** The RTX 5050 is a Blackwell GPU (`sm_120`), and older builds don't detect it. Confirm with `torch.cuda.is_available()` and a test matrix multiply.
+- **faster-whisper with CTranslate2 4.5 or newer**, using `compute_type="float16"`. int8 has known cuBLAS failures on RTX 50-series GPUs.
+- Set `PYTHONUTF8=1` so Hindi text doesn't break on Windows.
+- Use **`uv`** for Python (one lockfile on Mac and Windows) and **`pnpm`** for Node.
+
+**Sharing work**
+- Datasets are stored as Parquet in a **private Hugging Face dataset repo** (versioned, free, works on every OS). Model files are small enough to live in git.
+- Code goes through git: I work in this repo on your Mac, you review and commit, teammates pull. Teammates using Claude Code on their own machines follow the same no-commit rule.
+
+### 9.2 What comes first (in order)
+**Step 1, the contract** (Mac, you and me, before anything else). We define the `Analysis` schema: curve bins, bands, metrics, flags, evidence, attributions, edits, deltas and provenance. It's written once as Pydantic models and exported as JSON Schema and TypeScript types. We also build 2–3 **fixture analyses** from real public transcripts.
+*Why first:* the contract lets all three tracks work in parallel from day one. The UI is built without waiting for the model, and data/ML know exactly what they have to produce. Fixture curves are clearly marked as development data and never shown as results.
+
+**Step 2, three tracks at once:**
+| Machine | First tasks, in order |
+|---|---|
+| Windows A (data) | WSL2 + CUDA check → data spike (20 videos: "Most replayed", Hindi captions, chapters) → **start D1 collection running in the background.** It takes the longest and the model can't be trained until it's well underway → SponsorBlock pull → start gathering D2 screenshots |
+| Windows B (ML) | CUDA + faster-whisper check → feature package v0 on the spike videos → embedding and dual-labeling pipeline (Claude Batches + Groq) → **first model as soon as about 300 videos are in**, then retrain as the data grows |
+| Mac (UI) | `/impeccable init` interview → `shape` → **you pick the visual direction** → DESIGN.md → scaffold Next.js with GSAP, Lenis and Motion → build the Workspace against fixtures. Alongside (light work): FastAPI skeleton + LLMRouter for Claude and Groq |
+
+**Step 3, first integration.** The API serves real model output into the Workspace and the fixtures are retired. From here we follow Phases 3–8 below.
+
+## 10. Build phases
 
 Tracks: **A** Data/ML · **B** API/pipeline · **C** UI. Each phase has an exit check before the next one starts.
 
 | Phase | Deliverables | Exit check |
 |---|---|---|
-| **0. Foundations & spikes** | Check "Most replayed", captions (incl. Hindi) and chapters on 20 videos; check the Claude and Groq models and structured outputs; prototype the digitizer on 5 screenshots; scaffold the monorepo; impeccable `init` + `shape` → PRODUCT.md and DESIGN.md | Data sources and engines confirmed; you've approved the visual direction |
+| **0. Foundations & spikes** | `Analysis` contract and fixtures; Windows CUDA, Whisper and WSL2 setup; check "Most replayed", captions (incl. Hindi) and chapters on 20 videos; check the Claude and Groq models and structured outputs; prototype the digitizer on 5 screenshots; scaffold the monorepo; impeccable `init` + `shape` → PRODUCT.md and DESIGN.md | Contract frozen, every machine set up, data sources and engines confirmed, you've approved the visual direction |
 | **1. Data** | Collect D1, D1-media, D2 (digitized) and D3; data card | Every target cell filled, or the shortfall documented |
 | **2. Model & evaluation** | Feature package; dual LLM labels; interest model; hazard fit; ensemble; `eval_report.json` v1 with all baselines, CIs and norms | Beats position-only *and* both zero-shot LLM baselines on the holdout |
 | **3. Core loop** | API pipeline with SSE; Workspace (curve, flags, inspector, transcript and video sync); edits, re-simulation and edit stack; engine switch | Full demo flow works on all six samples (3 categories × EN/HI) |
@@ -335,7 +407,7 @@ Tracks: **A** Data/ML · **B** API/pipeline · **C** UI. Each phase has an exit 
 
 ---
 
-## 10. Demo script (≈3 min)
+## 11. Demo script (≈3 min)
 
 1. **Landing → sample:** a Hinglish tech-review script ("₹20k phone camera comparison").
 2. The analysis streams in and the curve draws. Headline metrics in Studio terms.
@@ -349,7 +421,7 @@ Tracks: **A** Data/ML · **B** API/pipeline · **C** UI. Each phase has an exit 
 
 ---
 
-## 11. Judge Q&A prep (analytics experts will ask these)
+## 12. Judge Q&A prep (analytics experts will ask these)
 
 | Question | Our answer |
 |---|---|
@@ -363,7 +435,7 @@ Tracks: **A** Data/ML · **B** API/pipeline · **C** UI. Each phase has an exit 
 
 ---
 
-## 12. Risks and mitigations
+## 13. Risks and mitigations
 
 | Risk | Mitigation |
 |---|---|
@@ -374,15 +446,19 @@ Tracks: **A** Data/ML · **B** API/pipeline · **C** UI. Each phase has an exit 
 | Hinglish ASR or embeddings weak | Whisper large-v3; transcript editable in the UI; fillers in both scripts; per-language reporting |
 | Feature sprawl hurts polish | Tier gates: Showstoppers only once Phase 6 is green |
 | Demo-day network failure | Demo mode with pre-cached projects and recorded streams |
+| RTX 50-series toolchain problems (PyTorch or CTranslate2 can't see the GPU) | Fixed versions (cu128, CTranslate2 4.5+, float16); fall back to Groq Whisper so data work never stalls |
+| MacBook Air slows down during the demo | The demo machine only calls APIs and runs light local models; heavy jobs run offline on the Windows GPUs; demo projects are pre-cached; animations are kept to transform and opacity |
+| Animation hurts usability or frame rate | Two energy levels (big on Persuade/Read pages, quick and precise on Operate pages); reduced-motion support; frame rate checked in the impeccable audit |
 
 ---
 
-## 13. Open decisions for you
-1. **Name:** Holdline (recommended), Tikaav, Cliffwatch, Payoff, Forecut, Premortem, or another?
-2. **Approve the scope**, or move any feature between tiers.
-3. **Approve the stack**, or tell me what to change.
+## 14. Open decisions for you
+1. ~~Name~~ — decided: **Retent AI** (may change later).
+2. **How many teammates are there?** §9 assumes two on Windows GPU laptops.
+3. **Approve the scope**, or move any feature between tiers.
+4. **Approve the stack** (including GSAP, Lenis and Motion), or tell me what to change.
 
-## 14. Working rules
+## 15. Working rules
 - Claude never commits. If you ask for a commit, no Claude co-author or attribution lines.
 - No fabricated numbers, testimonials or benchmarks anywhere.
 - All UI work goes through impeccable; visual direction is chosen by you during its workshop.

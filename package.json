@@ -1,0 +1,10 @@
+{
+  "name": "retent-ai",
+  "private": true,
+  "packageManager": "pnpm@10.18.0",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "uv run --package retent-api uvicorn retent_api.main:app --reload --port 8000",
+    "contract": "uv run --package retent-core python -m retent_core.contract_export && pnpm --filter web contract:types"
+  }
+}
