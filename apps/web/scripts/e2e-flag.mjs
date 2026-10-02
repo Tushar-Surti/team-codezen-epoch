@@ -1,0 +1,14 @@
+import { chromium } from "@playwright/test";
+const [, , out = "flag.png", idx = "1"] = process.argv;
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await page.goto("http://localhost:3000/a/sample-hinglish-tech", { waitUntil: "networkidle" });
+await page.waitForTimeout(1800);
+const cards = page.locator("button[aria-expanded]");
+await cards.nth(+idx).click();
+await page.waitForTimeout(900);
+await cards.nth(+idx).scrollIntoViewIfNeeded();
+await page.locator("aside >> text=The fix").first().scrollIntoViewIfNeeded();
+await page.waitForTimeout(500);
+await page.screenshot({ path: out });
+await browser.close();

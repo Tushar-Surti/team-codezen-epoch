@@ -64,6 +64,7 @@ class Engine(StrEnum):
 
 class SegmentRole(StrEnum):
     hook = "hook"
+    greeting = "greeting"
     setup = "setup"
     content = "content"
     payoff = "payoff"
@@ -72,6 +73,7 @@ class SegmentRole(StrEnum):
     cta = "cta"
     recap = "recap"
     outro = "outro"
+    filler = "filler"
 
 
 class FlagKind(StrEnum):

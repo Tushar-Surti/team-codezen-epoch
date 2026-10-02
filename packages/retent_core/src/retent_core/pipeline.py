@@ -19,7 +19,7 @@ from retent_core.contract import (
 from retent_core.engine import InterestModel, key_moments
 from retent_core.features import TimedSentence, redundancy_matrix
 from retent_core.flags import build_flags
-from retent_core.simulator import apply_ops, delta, run
+from retent_core.simulator import apply_ops, delta, edited_semantic, run
 from retent_core.text import (
     DEFAULT_WPS, content_tokens, detect_language, estimate_seconds, merge_caption_segments, split_script,
 )
@@ -83,20 +83,33 @@ def analyze_sentences(
     timing: str = "estimated",
     chapters: list[dict] | None = None,
     analysis_id: str | None = None,
+    semantic=None,
+    writer=None,
 ) -> Analysis:
-    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model)
+    """`semantic` is the LLM read of the script (retent_core.semantic.Semantic) or None for keyword cues.
+    `writer(flags, fixes, payoff_id) -> fixes` fills in fix text (an LLM call) before fixes are simulated."""
+    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, semantic=semantic)
     fs, pred = base.features, base.prediction
     flags, fixes, promises, loops = build_flags(fs, pred, meta.title, meta.category)
 
     payoff_id = None
     if promises and promises[0].paid_off is not None:
         payoff_id = next((s.id for s in sents if s.start == promises[0].paid_off), None)
-    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, payoff_id)
+    base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, payoff_id, semantic=semantic)
+
+    warnings_extra: list[Warning_] = []
+    if writer is not None and fixes:
+        try:
+            fixes = writer(flags, fixes, payoff_id)
+        except Exception as exc:  # noqa: BLE001 - keep the rules-engine fixes, say so
+            warnings_extra.append(Warning_(code="writer_failed",
+                                           message=f"Fix text is from the rules engine: the writing model failed ({str(exc)[:120]})."))
 
     simulated: list[Fix] = []
     for fx in fixes:
         try:
-            after = run(apply_ops(sents, fx.ops), meta.title, meta.thumbnail_text, meta.category, model, payoff_id)
+            after = run(apply_ops(sents, fx.ops), meta.title, meta.thumbnail_text, meta.category, model, payoff_id,
+                        semantic=edited_semantic(semantic, fx.ops))
             simulated.append(fx.model_copy(update={"delta": delta(base, after)}))
         except ValueError:
             simulated.append(fx)
@@ -127,13 +140,23 @@ def analyze_sentences(
     ]
     red = redundancy_matrix(fs)
 
-    sections = _sections(sents, fs.sim, fs.duration)
+    if semantic is not None and semantic.sections:
+        start_of = {x.id: x.start for x in sents}
+        heads = sorted((start_of[sec["start"]], sec["title"]) for sec in semantic.sections if sec["start"] in start_of)
+        sections = [Section(id=f"sec{k + 1}", kind="topic", title=title, start=t0,
+                            end=heads[k + 1][0] if k + 1 < len(heads) else fs.duration)
+                    for k, (t0, title) in enumerate(heads)]
+    else:
+        sections = _sections(sents, fs.sim, fs.duration)
     for k, ch in enumerate(chapters or []):
         sections.append(Section(id=f"ch{k + 1}", kind="chapter", title=ch.get("title", f"Chapter {k + 1}"),
                                 start=float(ch["start_time"]), end=float(ch["end_time"])))
 
     langs = Counter(s.lang for s in sents)
-    warnings = []
+    warnings = list(warnings_extra)
+    if semantic is None:
+        warnings.append(Warning_(code="no_semantic_read",
+                                 message="Hooks, promises and loops were found with keyword rules; no language model read this script."))
     if not MIN_DURATION <= fs.duration <= MAX_DURATION:
         warnings.append(Warning_(code="out_of_scope_duration",
                                  message=f"This runs {fs.duration / 60:.1f} min. Retent AI is tuned for 5–15 minute videos; "
@@ -152,7 +175,8 @@ def analyze_sentences(
         meta=meta.model_copy(update={"duration_seconds": round(fs.duration, 1),
                                      "language": meta.language or langs.most_common(1)[0][0]}),
         sentences=[Sentence(id=s.id, start=round(s.start, 2), end=round(s.end, 2), text=s.text, lang=s.lang,
-                            timing=timing) for s in sents],
+                            timing=timing, role=(semantic.roles.get(s.id) if semantic else None))
+                   for s in sents],
         sections=sections,
         curve=curve,
         metrics=metrics,

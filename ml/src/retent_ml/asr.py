@@ -95,6 +95,7 @@ def main() -> None:
     ap.add_argument("--engine", choices=["groq", "local"], default="groq",
                     help="groq (API, quota) or local (faster-whisper on this GPU, no quota).")
     ap.add_argument("--model", default=None, help="ASR model (Groq default RETENT_GROQ_ASR_MODEL; local large-v3-turbo).")
+    ap.add_argument("--only", help="Only these cells, comma-separated, e.g. tech/hi,vlog/hi (spend quota where data is thin).")
     args = ap.parse_args()
     local = LocalWhisper(args.model or "large-v3-turbo") if args.engine == "local" else None
     if not local and not groq.available():
@@ -106,6 +107,9 @@ def main() -> None:
     todo = []
     for f in files:
         rec = json.loads(f.read_text(encoding="utf-8"))
+        cell = f"{rec.get('category')}/{rec.get('seed_lang')}"
+        if args.only and cell not in args.only.split(","):
+            continue
         if needs_asr(rec, args.include_pending):
             todo.append((0 if rec["caption"].get("status") != "pending" else 1, rec["duration"], f))
     todo.sort()

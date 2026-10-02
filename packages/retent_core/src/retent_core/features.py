@@ -85,6 +85,35 @@ class FeatureSet:
         return self.bins[:, BIN_FEATURES.index(name)]
 
 
+def _apply_semantic(sentences: list[TimedSentence], feats: np.ndarray, semantic) -> None:
+    """LLM labels replace keyword cues for every line the semantic pass saw (same columns, so a
+    model trained on labelled data reads them the same way)."""
+    col = {name: i for i, name in enumerate(SENTENCE_FEATURES)}
+    opens = {lp["open"] for lp in semantic.loops}
+    closes = {lp["close"] for lp in semantic.loops if lp.get("close")}
+    known = getattr(semantic, "known_ids", None)
+    for i, s in enumerate(sentences):
+        if known is not None and s.id not in known:
+            continue  # lines added by an edit keep keyword cues unless the edit labelled them
+        role = semantic.roles.get(s.id)
+        feats[i, col["hook"]] = float(role == "hook" or s.id == semantic.hook_id)
+        feats[i, col["greeting"]] = float(role == "greeting")
+        # Asks and sponsor reads keep their precise keyword cues too ("subscribe", "sponsored by"):
+        # a span labelled "greeting" can still contain a subscribe ask.
+        feats[i, col["cta"]] = float(role == "cta" or feats[i, col["cta"]] > 0)
+        feats[i, col["sponsor"]] = float(role == "sponsor" or feats[i, col["sponsor"]] > 0)
+        feats[i, col["outro"]] = float(role == "outro")
+        feats[i, col["loop_open"]] = float(s.id in opens)
+        feats[i, col["loop_close"]] = float(s.id in closes or role == "payoff")
+        if role == "tangent":
+            feats[i, col["topic_sim"]] = min(feats[i, col["topic_sim"]], 0.05)
+            feats[i, col["promise_sim"]] = min(feats[i, col["promise_sim"]], 0.0)
+        elif role == "filler":
+            feats[i, col["novelty"]] = min(feats[i, col["novelty"]], 0.15)
+        elif role == "payoff":
+            feats[i, col["promise_sim"]] = max(feats[i, col["promise_sim"]], 0.35)
+
+
 def _sentence_features(
     sentences: list[TimedSentence], vectors: np.ndarray, title_vec: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -175,6 +204,7 @@ def build_features(
     title: str,
     thumbnail_text: str | None = None,
     embedder: Embedder | None = None,
+    semantic=None,
 ) -> FeatureSet:
     if not sentences:
         raise ValueError("No sentences to analyze.")
@@ -183,9 +213,11 @@ def build_features(
     promise = " ".join(filter(None, [title, thumbnail_text]))
     title_vec = embedder.embed([promise])[0]
     sent, sim = _sentence_features(sentences, vectors, title_vec)
+    if semantic is not None:
+        _apply_semantic(sentences, sent, semantic)
     duration = max(s.end for s in sentences)
     bins, edges = _bin_matrix(sentences, sent, duration)
-    return FeatureSet(sentences, duration, sent, bins, sim, vectors, title_vec, edges)
+    return FeatureSet(sentences, duration, sent, bins, sim, vectors, title_vec, edges, {"semantic": semantic})
 
 
 def redundancy_matrix(fs: FeatureSet, size: int = 48) -> np.ndarray:

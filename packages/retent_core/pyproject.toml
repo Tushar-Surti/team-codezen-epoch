@@ -7,6 +7,8 @@ dependencies = [
     "pydantic>=2.9",
     "numpy>=2.0",
     "httpx>=0.28",
+    "anthropic>=1.0",
+    "python-dotenv>=1.0",
 ]
 
 [build-system]

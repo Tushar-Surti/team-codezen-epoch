@@ -55,7 +55,9 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
     const b = retentionAt(analysis.curve.bins, duration, focusFlag.end).r;
     let cx = (x1 + x2) / 2;
     const cy = (y(a) + y(b)) / 2;
-    const rx = Math.max(22, (x2 - x1) / 2 + 14), ry = Math.max(18, Math.abs(y(a) - y(b)) / 2 + 16);
+    const rx = Math.max(22, (x2 - x1) / 2 + 14);
+    // Keep the ellipse inside the plot vertically too (long spans would otherwise run off the top).
+    const ry = Math.min(Math.max(18, Math.abs(y(a) - y(b)) / 2 + 16), cy - PAD_T + 2, y(0) - cy - 2);
     // Keep the felt-tip inside the plot so it never scribbles over the axis labels.
     cx = Math.max(PAD_L + rx + 6, Math.min(width - PAD_R - rx - 4, cx));
     const noteRight = cx < width * 0.62;

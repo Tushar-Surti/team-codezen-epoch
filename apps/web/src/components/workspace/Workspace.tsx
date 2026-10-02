@@ -77,8 +77,9 @@ export function Workspace({ id }: { id: string }) {
       <ProjectBar analysis={analysis} onExport={exportSheet.open} />
       <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px]">
         {/* Left: curve, lanes, script */}
-        <div className="flex min-h-0 min-w-0 flex-col overflow-y-auto">
-          <section className="px-6 pt-4" aria-label="Predicted retention curve">
+        {/* Curve and lanes stay pinned; only the script scrolls, so the drop you're reading stays in view. */}
+        <div className="flex min-h-0 min-w-0 flex-col overflow-y-auto xl:overflow-hidden">
+          <section className="shrink-0 px-6 pt-4" aria-label="Predicted retention curve">
             <div className="flex items-baseline justify-between gap-4">
               <h2 className="text-[15px] font-[620]">Predicted retention</h2>
               <p className="flex items-center gap-4 text-[12px] text-ink-3">
@@ -92,16 +93,16 @@ export function Workspace({ id }: { id: string }) {
                 )}
               </p>
             </div>
-            <div className="h-[clamp(240px,34vh,360px)]">
+            <div className="h-[clamp(220px,30vh,340px)]">
               <CurvePanel analysis={analysis} focusFlag={focusFlag} />
             </div>
             {uncalibrated && <p className="mt-1 max-w-[80ch] text-[12px] text-ink-3">{uncalibrated.message}</p>}
             <CurveTable analysis={analysis} sim={sim} draftKey={draft?.key ?? null} />
           </section>
-          <section className="px-6 pt-4" aria-label="Timeline lanes">
+          <section className="shrink-0 px-6 pt-4" aria-label="Timeline lanes">
             <Lanes analysis={analysis} />
           </section>
-          <section className="px-6 pt-6 pb-16" aria-label="Script">
+          <section className="min-h-[320px] px-6 pt-5 pb-16 xl:min-h-0 xl:flex-1 xl:overflow-y-auto" aria-label="Script">
             <ScriptPage analysis={analysis} sim={sim} draftKey={draft?.key ?? null} />
           </section>
         </div>

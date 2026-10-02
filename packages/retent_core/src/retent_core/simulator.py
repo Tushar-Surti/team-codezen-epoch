@@ -90,9 +90,34 @@ def apply_ops(sentences: list[TimedSentence], ops: list[EditOp]) -> list[TimedSe
     return out
 
 
+def edited_semantic(semantic, ops: list[EditOp]):
+    """Semantic labels for an edited script: rewritten lines lose their old role; lines inserted at the
+    very start (hook or tease) count as the hook. Mirrors apply_ops' numbering of new lines."""
+    if semantic is None:
+        return None
+    import copy
+
+    sem = copy.copy(semantic)
+    sem.roles = dict(semantic.roles)
+    known = set(getattr(semantic, "known_ids", None) or semantic.roles.keys()) | {
+        sid for op in ops for sid in op.sentence_ids}
+    n = 0
+    for op in ops:
+        if op.op == EditOpKind.rewrite and op.sentence_ids:
+            sem.roles.pop(op.sentence_ids[0], None)
+        elif op.op == EditOpKind.insert and op.new_text:
+            n += 1
+            sid = f"n{n:03d}"
+            known.add(sid)
+            if op.after_sentence_id == "" or (op.note and any(w in op.note.lower() for w in ("hook", "tease", "payoff"))):
+                sem.roles[sid] = "hook"
+    sem.known_ids = known
+    return sem
+
+
 def run(sentences: list[TimedSentence], title: str, thumbnail_text: str | None, category: str,
-        model: InterestModel | None = None, payoff_id: str | None = None) -> SimResult:
-    fs = build_features(sentences, title, thumbnail_text)
+        model: InterestModel | None = None, payoff_id: str | None = None, semantic=None) -> SimResult:
+    fs = build_features(sentences, title, thumbnail_text, semantic=semantic)
     pred = predict(fs, category, model)
     payoff = next((s.start for s in sentences if s.id == payoff_id), None) if payoff_id else None
     return SimResult(sentences, fs, pred, summarize(pred), payoff)

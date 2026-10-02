@@ -1252,6 +1252,7 @@
     "SegmentRole": {
       "enum": [
         "hook",
+        "greeting",
         "setup",
         "content",
         "payoff",
@@ -1259,7 +1260,8 @@
         "sponsor",
         "cta",
         "recap",
-        "outro"
+        "outro",
+        "filler"
       ],
       "title": "SegmentRole",
       "type": "string"

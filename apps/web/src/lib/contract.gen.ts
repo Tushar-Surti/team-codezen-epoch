@@ -46,7 +46,8 @@ export type Timing = "measured" | "estimated";
  * This interface was referenced by `RetentAIContract`'s JSON-Schema
  * via the `definition` "SegmentRole".
  */
-export type SegmentRole = "hook" | "setup" | "content" | "payoff" | "tangent" | "sponsor" | "cta" | "recap" | "outro";
+export type SegmentRole =
+  "hook" | "greeting" | "setup" | "content" | "payoff" | "tangent" | "sponsor" | "cta" | "recap" | "outro" | "filler";
 export type SectionId = string | null;
 export type Sentences = Sentence[];
 export type Id2 = string;

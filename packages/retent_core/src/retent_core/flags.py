@@ -112,7 +112,17 @@ def detect_late_hook(fs: FeatureSet) -> Candidate | None:
     )
 
 
+def _semantic(fs: FeatureSet):
+    return (fs.extras or {}).get("semantic")
+
+
 def detect_promise_debt(fs: FeatureSet, title: str) -> tuple[Candidate | None, list[PromiseItem]]:
+    sem = _semantic(fs)
+    sem_p = next((p for p in (sem.promises if sem else []) if p.get("source") == "title"), None)
+    if sem_p is not None:
+        pos = {s.id: i for i, s in enumerate(fs.sentences)}
+        return _promise_candidate(fs, sem_p["text"], pos.get(sem_p.get("first_touch") or ""),
+                                  pos.get(sem_p.get("payoff") or ""), confidence=0.75)
     title_terms = set(content_tokens(title))
     sim = fs.s("promise_sim")
     if not title_terms or len(fs.sentences) < 8:
@@ -128,11 +138,16 @@ def detect_promise_debt(fs: FeatureSet, title: str) -> tuple[Candidate | None, l
     verdict = [i for i, s in enumerate(fs.sentences) if s.start >= half and has_cue(s.text, PAYOFF_CUES)]
     strong = [i for i, h in enumerate(hits) if h >= max(thresh, float(hits.max()) * 0.8)]
     payoff = verdict[0] if verdict else (strong[-1] if strong else touch)
+    return _promise_candidate(fs, title, touch, payoff, confidence=0.6)
+
+
+def _promise_candidate(fs: FeatureSet, promise: str, touch: int | None, payoff: int | None,
+                       confidence: float) -> tuple[Candidate | None, list[PromiseItem]]:
     touch_t = fs.sentences[touch].start if touch is not None else None
     payoff_t = fs.sentences[payoff].start if payoff is not None else None
     status = "unpaid" if payoff_t is None else ("late" if payoff_t > max(60.0, fs.duration * 0.6) else "paid")
     items = [PromiseItem(
-        id="p1", text=title, source="title", first_touch=touch_t, paid_off=payoff_t, status=status,
+        id="p1", text=promise, source="title", first_touch=touch_t, paid_off=payoff_t, status=status,
         evidence_sentence_ids=[fs.sentences[i].id for i in ([touch] if touch is not None else []) +
                                ([payoff] if payoff not in (None, touch) else [])],
     )]
@@ -143,7 +158,7 @@ def detect_promise_debt(fs: FeatureSet, title: str) -> tuple[Candidate | None, l
     when = fmt_time(touch_t) if touch_t is not None else "never"
     title_line = (f"Title promise not addressed until {when}" if touch_t is not None
                   else "Title promise never clearly addressed")
-    detail = (f"The title asks \u201c{title}\u201d. Nothing speaks to it until {when}"
+    detail = (f"The title promises \u201c{promise}\u201d. Nothing speaks to it until {when}"
               + (f", and the answer only lands at {fmt_time(payoff_t)}." if payoff_t and payoff != touch else ".")
               + " Viewers who clicked for that answer start doubting they'll get it.")
     first_after_greeting = next((i for i in range(len(fs.sentences)) if fs.s("greeting")[i] == 0), 0)
@@ -152,9 +167,9 @@ def detect_promise_debt(fs: FeatureSet, title: str) -> tuple[Candidate | None, l
                   note="Tease the answer to the title in one line, early.")]
     return Candidate(
         FlagKind.promise_debt, idx, title_line, detail, ["promise_sim", "topic_sim"], ops=ops,
-        fix_title="Tease the answer in the first 15 seconds",
+        fix_title="Tease the answer in the opening",
         fix_rationale="Prove the title's question will be answered, then make them wait for the detail.",
-        confidence=0.65,
+        confidence=confidence,
     ), items
 
 
@@ -196,6 +211,27 @@ def detect_repetition(fs: FeatureSet) -> list[Candidate]:
 
 
 def detect_tangent(fs: FeatureSet) -> list[Candidate]:
+    sem = _semantic(fs)
+    if sem is not None:
+        mask = np.array([sem.roles.get(x.id) == "tangent" for x in fs.sentences])
+        out = []
+        for a, b in _runs(mask, 2):
+            st, en = fs.sentences[a].start, fs.sentences[b].end
+            if en - st < 12:
+                continue
+            idx = list(range(a, b + 1))
+            out.append(Candidate(
+                FlagKind.tangent, idx, f"{fmt_time(st)}–{fmt_time(en)} is a detour from the promise",
+                "This stretch tells a side story the title never promised. Viewers who came for the answer start "
+                "checking the progress bar.",
+                ["topic_sim", "promise_sim"],
+                ops=[EditOp(op=EditOpKind.cut, sentence_ids=[fs.sentences[x].id for x in idx[1:]]),
+                     EditOp(op=EditOpKind.rewrite, sentence_ids=[fs.sentences[idx[0]].id],
+                            note="Compress the detour into one line that ties back to the promise.")],
+                fix_title="Compress the detour to one line", fix_rationale="Keep the colour, lose the minutes.",
+                confidence=0.7,
+            ))
+        return out[:2]
     topic, promise = fs.s("topic_sim"), fs.s("promise_sim")
     score = topic + promise
     thresh = float(np.quantile(score, 0.18))
@@ -260,7 +296,13 @@ def detect_early_ask(fs: FeatureSet) -> list[Candidate]:
         else:
             block = [i]
         what = "Sponsor read" if is_sponsor else "Subscribe ask"
-        target = next((k for k in range(i + 1, len(fs.sentences)) if fs.s("promise_sim")[k] >= np.quantile(fs.s("promise_sim"), 0.8)), None)
+        # Ask right after the payoff (the verdict) when we know where it is; viewers who just got the
+        # answer are the ones who subscribe.
+        sem = _semantic(fs)
+        pay = next((p.get("payoff") for p in (sem.promises if sem else []) if p.get("payoff")), None)
+        pos = {x.id: k for k, x in enumerate(fs.sentences)}
+        target = pos.get(pay) if pay in pos and pos[pay] > i else next(
+            (k for k in range(i + 1, len(fs.sentences)) if fs.s("promise_sim")[k] >= np.quantile(fs.s("promise_sim"), 0.8)), None)
         ops = [EditOp(op=EditOpKind.move, sentence_ids=[fs.sentences[b].id for b in block],
                       after_sentence_id=fs.sentences[target].id if target is not None else fs.sentences[-1].id)]
         out.append(Candidate(
@@ -294,11 +336,16 @@ def detect_premature_wrap(fs: FeatureSet) -> list[Candidate]:
 
 def detect_open_loops(fs: FeatureSet) -> tuple[list[Candidate], list[OpenLoop]]:
     loops, cands = [], []
-    opens = [i for i, v in enumerate(fs.s("loop_open")) if v > 0]
-    for n, i in enumerate(opens):
-        closes = [k for k in range(i + 1, len(fs.sentences))
-                  if fs.s("loop_close")[k] > 0 or fs.sim[i, k] > 0.45]
-        close = closes[0] if closes else None
+    sem = _semantic(fs)
+    pos = {x.id: i for i, x in enumerate(fs.sentences)}
+    if sem is not None:
+        pairs = [(pos[lp["open"]], pos.get(lp.get("close") or "")) for lp in sem.loops if lp["open"] in pos]
+    else:
+        pairs = []
+        for i in [i for i, v in enumerate(fs.s("loop_open")) if v > 0]:
+            closes = [k for k in range(i + 1, len(fs.sentences)) if fs.s("loop_close")[k] > 0 or fs.sim[i, k] > 0.45]
+            pairs.append((i, closes[0] if closes else None))
+    for n, (i, close) in enumerate(sorted(pairs, key=lambda p: p[0])):
         s = fs.sentences[i]
         if close is None:
             status = "unclosed"

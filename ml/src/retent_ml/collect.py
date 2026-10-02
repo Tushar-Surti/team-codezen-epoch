@@ -169,12 +169,15 @@ def probe(video_id: str) -> tuple[dict | None, str]:
     return record, {"ok": "kept", "pending": "kept_pending_caption"}.get(cap_status, "kept_needs_asr")
 
 
-def fetch_pending_captions(sleep: float) -> None:
+def fetch_pending_captions(sleep: float, deadline: float = float("inf")) -> None:
     """Pass B: fill in captions for kept records whose caption fetch was rate-limited."""
     pending = [f for f in sorted(OUT_DIR.glob("*.json"))
                if json.loads(f.read_text(encoding="utf-8"))["caption"].get("status") == "pending"]
     print(f"{len(pending)} records waiting for captions", flush=True)
     for f in pending:
+        if time.time() > deadline:
+            print("time limit reached; rerun to continue", flush=True)
+            return
         rec = json.loads(f.read_text(encoding="utf-8"))
         cap = rec["caption"]
         for attempt in range(5):
@@ -249,9 +252,11 @@ def main() -> None:
     ap.add_argument("--only", help="Only these cells, comma-separated, e.g. tech/hi,vlog/hi.")
     ap.add_argument("--captions", action="store_true", help="Pass B: fetch captions for pending records only.")
     ap.add_argument("--fix-language", action="store_true", help="Refetch captions in the spoken language.")
+    ap.add_argument("--max-minutes", type=float, default=None, help="Stop cleanly after this long (rerun continues).")
     args = ap.parse_args()
+    deadline = time.time() + args.max_minutes * 60 if args.max_minutes else float("inf")
     if args.captions:
-        fetch_pending_captions(args.sleep * 3)
+        fetch_pending_captions(args.sleep * 3, deadline)
         return
     if args.fix_language:
         fix_languages(args.sleep)
@@ -272,6 +277,9 @@ def main() -> None:
             by_cell.setdefault(cell, []).append(seed)
     order = [s for group in zip_longest(*by_cell.values()) for s in group if s]
     for seed in order:
+        if time.time() > deadline:
+            print("time limit reached; rerun to continue", flush=True)
+            return
         cell = f"{seed['category']}/{seed['lang']}"
         try:
             # Listings are newest-first and carry no dates; list deeper so the window reaches
@@ -281,7 +289,7 @@ def main() -> None:
             print(f"[skip channel] {seed['url']}: {str(exc)[:120]}", flush=True)
             continue
         i, skip, probes = 0, 1, 0
-        while i < len(entries) and probes < args.per_channel:
+        while i < len(entries) and probes < args.per_channel and time.time() <= deadline:
             e = entries[i]
             vid = e["id"]
             i += 1

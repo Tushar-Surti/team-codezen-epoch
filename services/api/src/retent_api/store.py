@@ -33,8 +33,8 @@ class Store:
         raw = self.get_raw(analysis_id)
         if raw is None:
             return None
-        raw.pop("_heatmap", None)
-        return Analysis.model_validate(raw)
+        # Underscore keys are side data stored with the analysis (real curve, semantic labels).
+        return Analysis.model_validate({k: v for k, v in raw.items() if not k.startswith("_")})
 
     def heatmap(self, analysis_id: str) -> list[dict] | None:
         raw = self.get_raw(analysis_id)

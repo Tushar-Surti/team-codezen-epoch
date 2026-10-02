@@ -1,7 +1,9 @@
 # Retent AI: task tracker
 
 Status: ✅ done · 🟡 partly done · ⬜ not started · ⛔ blocked
-Owners: **You** (Mac, UI and demo) · **Data** (Windows laptop A) · **ML** (Windows laptop B). Claude helps on any task, but never commits.
+Everything runs on the **MacBook Air M3** (since 2026-10-03; see [PLAN.md §9](PLAN.md#9-one-machine-the-macbook-air-m3)).
+Owners: **You** (decisions, finding Studio screenshots, demo) · **Claude** (code and runs; never commits).
+Heavy jobs (collection, MLX transcription, training) run overnight, plugged in, never during a demo.
 IDs such as `A1` and `E2` refer to the feature tables in [PLAN.md §3](PLAN.md#3-feature-set).
 
 Update this file whenever a task changes state; it is the single source of truth for what's left.
@@ -11,15 +13,15 @@ Update this file whenever a task changes state; it is the single source of truth
 | Phase | Done | Partial | Left |
 |---|---|---|---|
 | 0. Foundations | 6 | 3 | 0 |
-| 1. Data | 3 | 6 | 0 |
-| 2. Model & evaluation | 4 | 0 | 13 |
-| 3. Core loop | 11 | 1 | 1 |
+| 1. Data | 4 | 6 | 1 |
+| 2. Model & evaluation | 7 | 0 | 10 |
+| 3. Core loop | 12 | 0 | 1 |
 | 4. Differentiators | 0 | 4 | 10 |
 | 5. Validation & discovery | 0 | 0 | 5 |
-| 6. Finish | 0 | 1 | 7 |
+| 6. Finish | 1 | 1 | 6 |
 | 7. Pitch kit | 1 | 1 | 4 |
 | 8. Showstoppers | 0 | 0 | 5 |
-| **Total** | **25** | **16** | **45** |
+| **Total** | **31** | **15** | **42** |
 
 ---
 
@@ -34,22 +36,24 @@ Update this file whenever a task changes state; it is the single source of truth
 | Visual direction chosen | You | ✅ | Revision Draft; brief in `apps/web/.impeccable/surfaces/` |
 | Monorepo scaffold (uv + pnpm) | Claude | ✅ | |
 | Add `ANTHROPIC_API_KEY` and `GROQ_API_KEY` to `.env` | You | 🟡 | Groq added and verified; Anthropic still missing (blocks Claude tasks) |
-| WSL2 + CUDA 12.8 + PyTorch setup on both Windows laptops | Data, ML | 🟡 | Laptop with RTX 4050 done natively (torch 2.11 cu128, faster-whisper on GPU); second laptop: `uv sync --all-packages --all-extras` |
-| Screenshot digitizer prototype (5 Studio screenshots) | ML | 🟡 | `retent_ml.digitize` built and tested on synthetic light/dark charts; needs 5 real screenshots |
+| GPU kit round trip: friend's RTX 5050 laptop merges their 108 videos, collects, fetches captions, runs Whisper large-v3, returns `RETURN.zip` | You | 🟡 | Kit built and round-trip tested on the Mac (`handoff/retent-gpu-kit.zip`); send it, then `python -m retent_ml.kit absorb RETURN.zip` |
+| Screenshot digitizer prototype (5 Studio screenshots) | Claude | 🟡 | `retent_ml.digitize` built and tested on synthetic light/dark charts; needs 5 real screenshots |
 
 ## Phase 1: Data
 
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| D1 pass A: metadata + "Most replayed" | Data | 🟡 | Mac: 105 tech/en. Windows: 108 across 4 cells, collector running round-robin over all 6 cells; see [DATA_CARD.md](DATA_CARD.md) |
-| D1 pass B: captions | Data | 🟡 | Mac: 86 waiting on 429 (run `--captions`). Windows: captions arriving with pass A; `--fix-language` repairs Hindi videos given English captions |
-| Collect Hindi cells (tech/hi, education/hi, vlog/hi) | Data | 🟡 | Running on the Windows laptop; tech/hi 93, education/hi 5, vlog/hi 0 so far |
+| D1 pass A: metadata + "Most replayed" | Claude | 🟡 | 258 on the Mac (tech/en 209, tech/hi 16, edu/en 11, edu/hi 22), now collecting only the thin cells; +108 waiting on the Windows laptop. Target ≈100 with text per cell. Audit: all curves clean (`retent_ml.audit`) |
+| D1 pass B: captions | Claude | 🟡 | ~220 waiting on 429; `--captions` backs off (optional phone hotspot as a second connection); Whisper (pass C) covers the rest. `--fix-language` repairs Hindi videos given English captions |
+| Collect Hindi cells (tech/hi, education/hi, vlog/hi) | Claude | 🟡 | Collector on the Mac focuses on thin cells; tech/hi 93 more arrive with the Windows data |
 | Groq Whisper fallback when captions are blocked | Claude | ✅ | Pass C: `python -m retent_ml.asr`; caption-less videos are now kept for it |
-| D1-media subset (~300 videos: audio and low-res video) | Data | 🟡 | `retent_ml.media --limit 300` built (balanced across cells, no ffmpeg); not run yet |
-| D2: digitize 60–100 public Studio retention screenshots | Data | 🟡 | Tool + manifest + review overlays ready; screenshots must be found and saved by a person |
-| D3: SponsorBlock segments for D1 videos | Data | ✅ | `retent_ml.sponsorblock`; rerun after collecting (incremental) |
-| Share data via a private Hugging Face dataset repo | Data | 🟡 | `retent_ml.hub push/pull` built; needs `HF_TOKEN` and `RETENT_HF_DATASET` in `.env` |
-| Data card (counts per cell, yield, biases) | Data | ✅ | Generated: `retent_ml.datacard` → [DATA_CARD.md](DATA_CARD.md) |
+| Local Whisper on the Mac's GPU (MLX `large-v3-turbo`) as `--engine local` | Claude | ⬜ | No quota; replaces the CUDA path; run overnight on every video still waiting for text |
+| D1-media subset (~120 videos: audio and low-res video) | Claude | 🟡 | `retent_ml.media --limit 300` built (balanced across cells, no ffmpeg); not run yet |
+| D2: digitize 60–100 public Studio retention screenshots | Claude | 🟡 | Tool + manifest + review overlays ready; screenshots must be found and saved by a person |
+| D3: SponsorBlock segments for D1 videos | Claude | ✅ | `retent_ml.sponsorblock`; rerun after collecting (incremental) |
+| Share data via a private Hugging Face dataset repo | Claude | 🟡 | `retent_ml.hub push/pull` built; needs `HF_TOKEN` and `RETENT_HF_DATASET` in `.env` |
+| Data card (counts per cell, yield, biases) | Claude | ✅ | Generated: `retent_ml.datacard` → [DATA_CARD.md](DATA_CARD.md) |
+| Per-record quality audit (label, text coverage, pace, language) | Claude | ✅ | `retent_ml.audit` → `data/derived/audit.json`; position explains only ~8% of a curve, so most of the signal is content |
 
 ## Phase 2: Model & evaluation
 
@@ -59,18 +63,18 @@ Update this file whenever a task changes state; it is the single source of truth
 | Hazard engine v0 (rules-based interest score) | Claude | ✅ | `engine.py`; curves labelled uncalibrated |
 | Flag detectors (9 kinds) + counterfactual severity | Claude | ✅ | `flags.py` |
 | Edit simulator (apply ops, re-time, deltas) | Claude | ✅ | `simulator.py` |
-| LLM router: Claude + Groq, failover, cache, provenance | Claude | ⛔ | Needs keys |
-| LLM semantic pass: segment roles, promises, loops, payoff | Claude | ⛔ | Replaces cue lexicons; also names sections |
-| LLM fix writing in the creator's language and voice | Claude | ⛔ | Replaces template lines |
-| Dual labeling of D1 (Claude Batches + Groq) + agreement κ | ML | ⬜ | |
-| Calibrate speaking rates per language/category from captions | ML | ⬜ | Writes `models/speaking_rates.json` |
-| LightGBM LambdaRank interest model, GroupKFold by channel | ML | ⬜ | Needs ≥300 captioned videos |
-| Fit hazard baselines on D2 → `models/baselines.json` | ML | ⬜ | Turns curves "calibrated" |
-| Ensemble uncertainty band (5 fold models) | ML | ⬜ | |
-| SHAP attributions for the trained model | ML | ⬜ | Same `Signal` shape as today |
-| Baselines: position-only, Claude zero-shot, Groq zero-shot, random | ML | ⬜ | |
-| `eval_report.json` + `norms.json` (`ml/eval/run.py`) | ML | ⬜ | Feeds E1 and E5 |
-| Category norms on each flag (`Flag.norm`) | ML | ⬜ | "Top Hindi tech reviews hook by 0:08" |
+| LLM router: Claude + Groq, failover, cache, provenance | Claude | ✅ | `retent_core/llm.py`; Groq live; Claude path coded (structured outputs, prompt caching, refusal fallback), activates when the key is added |
+| LLM semantic pass: segment roles, promises, loops, payoff | Claude | ✅ | `retent_core/semantic.py`, about 3.5 s on Groq; finds tangents, the real payoff and unclosed loops the keyword rules missed; names sections |
+| LLM fix writing in the creator's language and voice | Claude | ✅ | Writes in the script's own language/script; guards against invented timings and content; every fix re-simulated with the real text |
+| Dual labeling of D1 (Claude Batches + Groq) + agreement κ | Claude | ⬜ | |
+| Calibrate speaking rates per language/category from captions | Claude | ⬜ | Writes `models/speaking_rates.json` |
+| LightGBM LambdaRank interest model, GroupKFold by channel | Claude | ⬜ | Needs ≥300 captioned videos |
+| Fit hazard baselines on D2 → `models/baselines.json` | Claude | ⬜ | Turns curves "calibrated" |
+| Ensemble uncertainty band (5 fold models) | Claude | ⬜ | |
+| SHAP attributions for the trained model | Claude | ⬜ | Same `Signal` shape as today |
+| Baselines: position-only, Claude zero-shot, Groq zero-shot, random | Claude | ⬜ | |
+| `eval_report.json` + `norms.json` (`ml/eval/run.py`) | Claude | ⬜ | Feeds E1 and E5 |
+| Category norms on each flag (`Flag.norm`) | Claude | ⬜ | "Top Hindi tech reviews hook by 0:08" |
 | Missing flags: chapter skip, visual/audio monotony | Claude | ⬜ | Monotony needs video mode |
 
 ## Phase 3: Core loop
@@ -85,7 +89,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | Fix queue + inspector + Apply → Blue/Pink revisions + re-simulation | You + Claude | ✅ | |
 | Intake (script mode) with live stage progress | You + Claude | ✅ | |
 | Projects list | You + Claude | ✅ | |
-| Engine switch (Deep / Fast / Auto) | Claude | 🟡 | UI exists; does nothing until the LLM router lands |
+| Engine switch (Deep / Fast / Auto) | Claude | ✅ | Routes read/write to Groq or Claude with failover; provenance badge on every written fix |
 | Key moments (spikes) marked on the curve | You + Claude | ✅ | Spikes marked in ink; dips keep the red wash |
 | Curve as a data table (accessibility) | You + Claude | ✅ | "Curve as a table" under the chart, with key moments and the revision column |
 | Keyboard control of playhead and lanes | You + Claude | ✅ | Curve is a slider: arrows, Shift, Home/End, `[` `]` jump between drops, Esc; arrows in the drop-risk lane |
@@ -97,7 +101,7 @@ Update this file whenever a task changes state; it is the single source of truth
 |---|---|---|---|---|
 | A1 | Upload `.txt / .docx / .srt / .vtt` | Claude | ⬜ | Paste works today |
 | A2 | Thumbnail image read by Claude vision; candidate titles | Claude | ⛔ | Thumbnail *text* field works today |
-| A3 | Video mode: Whisper, shot cuts, loudness, face, OCR | ML + Claude | ⬜ | |
+| A3 | Video mode: Whisper, shot cuts, loudness, face, OCR | Claude | ⬜ | |
 | A4 | Public YouTube URL mode | Claude | ⬜ | Caption 429 → Whisper fallback |
 | C3 | Open-loop arcs | Claude | 🟡 | Lane works; LLM detection will find far more loops |
 | C4 | Redundancy map view (recurrence plot) | You + Claude | 🟡 | Data computed in every analysis; no UI yet |
@@ -117,7 +121,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | E1 | Validation Lab (renders `eval_report.json`) | You + Claude | ⬜ | Waits on the eval report |
 | E2 | Blind test: any public URL → predict → reveal actual | You + Claude | ⬜ | Fixtures already store the real curve |
 | E3 | Channel X-Ray | You + Claude | ⬜ | |
-| E4 | Retention Import (screenshot → curve → score) | ML + You | ⬜ | Digitizer from Phase 0 |
+| E4 | Retention Import (screenshot → curve → score) | You | ⬜ | Digitizer from Phase 0 |
 | E5 | Category Norms page | You + Claude | ⬜ | Waits on `norms.json` |
 
 ## Phase 6: Finish
@@ -131,18 +135,18 @@ Update this file whenever a task changes state; it is the single source of truth
 | Tests: pytest for the core, Playwright end-to-end demo flow | Claude | 🟡 | pytest done: core + API (`uv run pytest`); Playwright flow left |
 | Demo mode (pre-cached projects, replay recorded streams) | Claude | ⬜ | |
 | Deploy: Vercel (web) + Railway/Render (API) | You + Claude | ⬜ | Demo runs locally first |
-| Fix known rough edges: weak auto section titles; fixes with no measurable gain | Claude | ⬜ | Mostly solved by the LLM pass |
+| Fix known rough edges: weak auto section titles; fixes with no measurable gain | Claude | ✅ | Sections named by the LLM; asks now move to after the verdict, so every sample fix has a positive gain |
 
 ## Phase 7: Pitch kit
 
 | Task | Owner | Status |
 |---|---|---|
 | README + architecture diagram | Claude | 🟡 |
-| Model card | ML | ⬜ |
-| Data card | Data | ✅ |
+| Model card | Claude | ⬜ |
+| Data card | Claude | ✅ |
 | 2–3 min demo video | You | ⬜ |
 | Pitch deck | You + Claude | ⬜ |
-| Judge Q&A rehearsal ([PLAN.md §12](PLAN.md#12-judge-qa-prep-analytics-experts-will-ask-these)) | Everyone | ⬜ |
+| Judge Q&A rehearsal ([PLAN.md §12](PLAN.md#12-judge-qa-prep-analytics-experts-will-ask-these)) | You | ⬜ |
 
 ## Phase 8: Showstoppers (only after Phase 6 is done)
 

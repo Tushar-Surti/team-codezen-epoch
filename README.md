@@ -7,7 +7,7 @@ Retent AI reads a video script (before you shoot) or transcript (before you publ
 - Plan and architecture: [docs/PLAN.md](docs/PLAN.md)
 - Task tracker (what's done and what's left): [docs/TASKS.md](docs/TASKS.md)
 - Product record: [PRODUCT.md](PRODUCT.md)
-- Teammate machine setup and data collection: [docs/TEAM_SETUP.md](docs/TEAM_SETUP.md)
+- Setup and data collection (MacBook): [docs/SETUP.md](docs/SETUP.md)
 
 ## Layout
 

@@ -7,13 +7,15 @@
 
 ---
 
-## Build status (updated 2026-10-02)
+## Build status (updated 2026-10-03)
+
+**Everything now runs on the MacBook Air M3** (see §9).
 
 **Live task tracker: [TASKS.md](TASKS.md)**, which lists every remaining task with owner and status.
 
 **Phase 0 findings**
 - "Most replayed" is served for about 6 in 16 videos (skewed to uploads older than ~1 month). The collector probes 2–3× more videos than it keeps.
-- Captions: Hindi original ASR is available as `hi-orig`. Caption downloads hit HTTP 429 after roughly 20 requests per IP, so collection runs as pass A (metadata + "Most replayed") and pass B (captions, with backoff), spread across machines. Groq Whisper on audio is the fallback.
+- Captions: Hindi original ASR is available as `hi-orig`. Caption downloads hit HTTP 429 after roughly 20 requests per IP, so collection runs as pass A (metadata + "Most replayed"), pass B (captions, with backoff) and pass C (Whisper on the audio: Groq, plus local MLX on the Mac).
 - 162 seed channels were discovered across the 6 cells (`ml/seeds/channels.json`).
 - Visual direction chosen through impeccable: **Revision Draft** (shooting-script revision pages + the script doctor's red pen). Contract is in `apps/web/.impeccable/surfaces/`.
 
@@ -205,7 +207,7 @@ LLMRouter  ── role-based routing · automatic failover · cache keyed by (pr
 
 | Role | Default | Alternate | Why |
 |---|---|---|---|
-| ASR (speech to text) | Groq Whisper large-v3 (turbo for drafts) | local faster-whisper | Fast, strong on Hindi, word timestamps |
+| ASR (speech to text) | Groq Whisper large-v3 | Local MLX Whisper on the Mac (`large-v3-turbo`, no quota) | Fast, strong on Hindi, segment timestamps |
 | Semantic feature extraction (feeds the model) | **Fixed for each model release** to whichever provider scores better on the holdout | The other provider, with its agreement score published | Labels at train and serve time must come from the same source |
 | Writing edits, hooks and rewrites | Claude Opus 5.5 (Deep) | Groq GPT-OSS-120B (Fast) | Quality vs speed, user's choice |
 | Vision (thumbnail text, keyframes, axis reading in the screenshot digitizer) | Claude Opus 5.5 | — | Vision is reliable on Claude |
@@ -223,8 +225,8 @@ LLMRouter  ── role-based routing · automatic failover · cache keyed by (pr
 ### Datasets
 | Set | What | Size target | Source |
 |---|---|---|---|
-| **D1, public interest** | 5–15 min videos with a "Most replayed" curve and captions | **~1,200** (3 categories × 2 languages × ~200) from 80–120 channels, big *and* mid-sized | YouTube Data API search (duration filter, `relevanceLanguage`) + yt-dlp (metadata, chapters, captions, "Most replayed") |
-| **D1-media** | Subset with low-res video and audio, for video-mode features | ~300 | yt-dlp |
+| **D1, public interest** | 5–15 min videos with a "Most replayed" curve and captions | **~600 with text** for the first model (≈100 per cell; 1,200 stretch) from 80–160 channels, big *and* mid-sized | YouTube Data API search (duration filter, `relevanceLanguage`) + yt-dlp (metadata, chapters, captions, "Most replayed") |
+| **D1-media** | Subset with low-res video and audio, for video-mode features | ~120 | yt-dlp |
 | **D2, public absolute retention** | Real YouTube Studio retention graphs that creators shared publicly, digitized with our Retention Import tool, each linked to its video | 60–100 | Creators' "my analytics" videos and posts, retention-critique threads (e.g. r/NewTubers), case-study breakdowns. Source URL stored for every curve |
 | **D3, natural experiments** | Sponsor and self-promo segments | Wherever available in D1 | SponsorBlock API |
 
@@ -296,7 +298,7 @@ One command, `ml/eval/run.py`, produces `eval_report.json`; the Validation Lab a
 | Jobs | Async runner inside the API, SSE progress | Live progress without extra infrastructure |
 | Database | SQLite (SQLModel) | Nothing to operate; can move to Postgres |
 | LLM | **Claude Opus 5.5 + Groq (GPT-OSS-120B / 20B)** behind `LLMRouter` | See §5 |
-| ASR | **Groq Whisper large-v3** (local faster-whisper fallback) | Speed, Hindi, word timestamps |
+| ASR | **Groq Whisper large-v3** + **MLX Whisper** on the Mac's GPU | Groq for speed; MLX overnight with no quota |
 | Embeddings | multilingual-e5 (local) | Hindi and English in one space, free |
 | Media | ffmpeg, PySceneDetect, librosa, MediaPipe, OCR | Cheap, reliable signals |
 | ML | LightGBM, SHAP, scikit-learn, pandas | Interpretable, works with a small dataset |
@@ -368,50 +370,40 @@ The visual world itself (palette, type, layout character) is still chosen with y
 
 ---
 
-## 9. Team, machines and what comes first
+## 9. One machine: the MacBook Air M3
 
-### 9.1 Who works on which machine
-| Machine | Strengths | Limits | Best used for |
-|---|---|---|---|
-| **Your MacBook Air M3, 16 GB** | Fast, quiet, great screen, hardware video decoding | No fan, so it slows down under long heavy jobs; 16 GB is shared between CPU and GPU | **Design and UI lead:** impeccable sessions, frontend, API, LLM router. **This is the demo machine.** At runtime it only needs Groq (ASR), the Claude and Groq APIs, a small embedding model on Apple's GPU, and LightGBM on the CPU, all of which fit easily |
-| **Teammates' Windows laptops, RTX 5050 8 GB VRAM, 24 GB RAM** | CUDA GPU, more RAM, can run jobs for hours | Windows tooling quirks; RTX 50-series GPUs need recent CUDA builds | **Data and ML:** long-running collection (each teammate's own home connection spreads out YouTube's rate limits), local GPU Whisper for videos without captions, embedding about 1,200 videos, video features for D1-media, training and parameter sweeps, the neural challenger model |
+**Changed 2026-10-03:** all work (UI, API, data collection, transcription, training and the demo) runs on one **MacBook Air M3 (16 GB)**. The Windows GPU laptops are out of the day-to-day plan. They're used only through the self-contained GPU kit (§9.3), which a friend runs and sends back.
 
-**Suggested roles** (assuming two teammates; a third would take the API pipeline and the digitizer)
-- **You (Mac):** product and UI lead. You drive the impeccable sessions with me, own the frontend, wire up the API, and present the demo.
-- **Teammate A (Windows GPU):** data lead. Collectors, SponsorBlock, digitizing D2 screenshots, data card.
-- **Teammate B (Windows GPU):** ML lead. Feature package, embeddings, ASR, video features, training, evaluation, model card.
+### 9.1 What that changes
+| Area | Before (3 machines) | Now (MacBook only) |
+|---|---|---|
+| Transcription | Local Whisper on the RTX GPUs | **Groq Whisper** (quota: about 2 h of audio per hour, 8 h per day) plus **local Whisper on the Mac's GPU with MLX** (`large-v3-turbo`, no quota, run overnight) |
+| YouTube rate limits | Three home connections | One connection. Captions back off on HTTP 429; Whisper fills the gaps; a phone hotspot is an optional second connection for caption pass B |
+| Training and sweeps | CUDA GPUs | LightGBM on the CPU (seconds to minutes at this data size); embeddings on the Apple GPU (MPS) or ONNX |
+| Dataset size | ~1,200 videos | **~600 with text for the first trained model (≈100 per cell)**; 1,200 stays the stretch goal |
+| D1-media (rough-cut features) | ~300 videos | **~120 videos**, low resolution, using hardware video decoding |
+| Roles | You (UI) + data lead + ML lead | **You** (decisions, finding Studio screenshots, demo) + **Claude** (code and runs) |
 
-**Windows GPU setup (checked in Phase 0)**
-- Run the Python/ML pipeline in **WSL2 (Ubuntu)**; native Windows is only for the browser.
-- **PyTorch 2.7 or newer with CUDA 12.8 (`cu128`) wheels.** The RTX 5050 is a Blackwell GPU (`sm_120`), and older builds don't detect it. Confirm with `torch.cuda.is_available()` and a test matrix multiply.
-- **faster-whisper with CTranslate2 4.5 or newer**, using `compute_type="float16"`. int8 has known cuBLAS failures on RTX 50-series GPUs.
-- Set `PYTHONUTF8=1` so Hindi text doesn't break on Windows.
-- Use **`uv`** for Python (one lockfile on Mac and Windows) and **`pnpm`** for Node.
+### 9.2 How the Mac is used (it's also the demo machine)
+- **Daytime:** UI, API, impeccable design rounds, quick re-runs. Light background collection is fine.
+- **Overnight, plugged in:** the heavy jobs: collection pass A, local MLX Whisper, training and evaluation. The Air has no fan and throttles under long full loads, so heavy work runs when nobody is using the machine.
+- **Never during a demo:** no collection, transcription or training while presenting. Demo projects are pre-cached, and the demo only calls the APIs.
+- **Storage:** about 15 KB per video record and about 5 MB of temporary audio per transcription (deleted straight away). The whole dataset stays under 100 MB. Optional backup to the private Hugging Face dataset repo (`retent_ml.hub`).
 
-**Sharing work**
-- Datasets are stored as Parquet in a **private Hugging Face dataset repo** (versioned, free, works on every OS). Model files are small enough to live in git.
-- Code goes through git: I work in this repo on your Mac, you review and commit, teammates pull. Teammates using Claude Code on their own machines follow the same no-commit rule.
-
-### 9.2 What comes first (in order)
-**Step 1, the contract** (Mac, you and me, before anything else). We define the `Analysis` schema: curve bins, bands, metrics, flags, evidence, attributions, edits, deltas and provenance. It's written once as Pydantic models and exported as JSON Schema and TypeScript types. We also build 2–3 **fixture analyses** from real public transcripts.
-*Why first:* the contract lets all three tracks work in parallel from day one. The UI is built without waiting for the model, and data/ML know exactly what they have to produce. Fixture curves are clearly marked as development data and never shown as results.
-
-**Step 2, three tracks at once:**
-| Machine | First tasks, in order |
-|---|---|
-| Windows A (data) | WSL2 + CUDA check → data spike (20 videos: "Most replayed", Hindi captions, chapters) → **start D1 collection running in the background.** It takes the longest and the model can't be trained until it's well underway → SponsorBlock pull → start gathering D2 screenshots |
-| Windows B (ML) | CUDA + faster-whisper check → feature package v0 on the spike videos → embedding and dual-labeling pipeline (Claude Batches + Groq) → **first model as soon as about 300 videos are in**, then retrain as the data grows |
-| Mac (UI) | `/impeccable init` interview → `shape` → **you pick the visual direction** → DESIGN.md → scaffold Next.js with GSAP, Lenis and Motion → build the Workspace against fixtures. Alongside (light work): FastAPI skeleton + LLMRouter for Claude and Groq |
-
-**Step 3, first integration.** The API serves real model output into the Workspace and the fixtures are retired. From here we follow Phases 3–8 below.
+### 9.3 What comes next, in order
+1. **GPU kit round trip (optional offload).** `python -m retent_ml.kit build` packs the code and every collected video into `handoff/retent-gpu-kit.zip`. A friend with an NVIDIA laptop runs one command (`run.ps1`). It merges their earlier 108 videos, finds more videos for the thin cells, fetches captions from their connection, transcribes the rest with Whisper large-v3 on their GPU, and returns `RETURN.zip`. On the Mac, `python -m retent_ml.kit absorb RETURN.zip` merges it, keeping the best text for each video. No repo setup is needed on their side.
+2. **Add MLX Whisper as the local engine** in `retent_ml.asr` (`--engine local` on Apple Silicon) and run it overnight on every video still waiting for text.
+3. **Rebalance collection** toward the thin cells (vlogs, Hindi education) until each has about 100 videos with text.
+4. **Train the interest model and produce the first `eval_report.json`** once there are about 300 videos with text; retrain as data arrives.
+5. Then the product work in Phases 3–8 below, all on this machine.
 
 ## 10. Build phases
 
-Tracks: **A** Data/ML · **B** API/pipeline · **C** UI. Each phase has an exit check before the next one starts.
+Work streams (all on the MacBook): **Data/ML** · **API/pipeline** · **UI**. Each phase has an exit check before the next one starts.
 
 | Phase | Deliverables | Exit check |
 |---|---|---|
-| **0. Foundations & spikes** | `Analysis` contract and fixtures; Windows CUDA, Whisper and WSL2 setup; check "Most replayed", captions (incl. Hindi) and chapters on 20 videos; check the Claude and Groq models and structured outputs; prototype the digitizer on 5 screenshots; scaffold the monorepo; impeccable `init` + `shape` → PRODUCT.md and DESIGN.md | Contract frozen, every machine set up, data sources and engines confirmed, you've approved the visual direction |
+| **0. Foundations & spikes** | `Analysis` contract and fixtures; check "Most replayed", captions (incl. Hindi) and chapters on 20 videos; check the Claude and Groq models and structured outputs; prototype the digitizer on 5 screenshots; scaffold the monorepo; impeccable `init` + `shape` → PRODUCT.md and DESIGN.md | Contract frozen, data sources and engines confirmed, you've approved the visual direction |
 | **1. Data** | Collect D1, D1-media, D2 (digitized) and D3; data card | Every target cell filled, or the shortfall documented |
 | **2. Model & evaluation** | Feature package; dual LLM labels; interest model; hazard fit; ensemble; `eval_report.json` v1 with all baselines, CIs and norms | Beats position-only *and* both zero-shot LLM baselines on the holdout |
 | **3. Core loop** | API pipeline with SSE; Workspace (curve, flags, inspector, transcript and video sync); edits, re-simulation and edit stack; engine switch | Full demo flow works on all six samples (3 categories × EN/HI) |
@@ -455,22 +447,24 @@ Tracks: **A** Data/ML · **B** API/pipeline · **C** UI. Each phase has an exit 
 
 | Risk | Mitigation |
 |---|---|
-| YouTube blocks scraping, or the "Most replayed" format changes | Checked in Phase 0; collect from local machines with rate limits; cache everything; pre-cache demo videos and channels |
+| YouTube blocks scraping, or the "Most replayed" format changes | Checked in Phase 0; collect from the Mac with rate limits and backoff; cache everything; pre-cache demo videos and channels |
 | D2 too small | Bootstrap confidence intervals; the absolute level is labelled as calibrated on n = N; shape results stand on their own |
 | The two engines disagree | Fixed labeler for each model release; agreement and accuracy published |
 | LLM latency or cost | One or two calls per video; Claude Batches for offline work; Groq for live; content-hash cache; partial results streamed |
 | Hinglish ASR or embeddings weak | Whisper large-v3; transcript editable in the UI; fillers in both scripts; per-language reporting |
 | Feature sprawl hurts polish | Tier gates: Showstoppers only once Phase 6 is green |
 | Demo-day network failure | Demo mode with pre-cached projects and recorded streams |
-| RTX 50-series toolchain problems (PyTorch or CTranslate2 can't see the GPU) | Fixed versions (cu128, CTranslate2 4.5+, float16); fall back to Groq Whisper so data work never stalls |
-| MacBook Air slows down during the demo | The demo machine only calls APIs and runs light local models; heavy jobs run offline on the Windows GPUs; demo projects are pre-cached; animations are kept to transform and opacity |
+| MacBook Air slows down during the demo | Heavy jobs only run overnight; nothing heavy runs while presenting; demo projects are pre-cached; animations are kept to transform and opacity |
+| One machine, one internet connection: YouTube caption limits (HTTP 429) | Caption pass B backs off; Groq Whisper plus local MLX Whisper transcribe instead; optional phone hotspot for a second connection |
+| Fanless Air throttles on long jobs (transcription, training) | Run them overnight, plugged in; LightGBM and MLX are light enough to finish in hours, not days |
+| All data on one laptop | Optional backup to the private Hugging Face dataset repo; records are small JSON (dataset < 100 MB) |
 | Animation hurts usability or frame rate | Two energy levels (big on Persuade/Read pages, quick and precise on Operate pages); reduced-motion support; frame rate checked in the impeccable audit |
 
 ---
 
 ## 14. Open decisions for you
 1. ~~Name~~ — decided: **Retent AI** (may change later).
-2. **How many teammates are there?** §9 assumes two on Windows GPU laptops.
+2. ~~Machines~~ — decided: everything runs on the MacBook Air M3 (§9).
 3. **Approve the scope**, or move any feature between tiers.
 4. **Approve the stack** (including GSAP, Lenis and Motion), or tell me what to change.
 

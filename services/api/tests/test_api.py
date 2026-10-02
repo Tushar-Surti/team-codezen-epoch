@@ -14,6 +14,9 @@ from retent_api.store import FIXTURES, Store
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(main, "store", Store(data_dir=tmp_path / "analyses", fixtures_dir=FIXTURES))
+    # Hermetic: no network LLM calls in tests; the pipeline falls back to keyword rules.
+    for key in ("GROQ_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        monkeypatch.delenv(key, raising=False)
     with TestClient(main.app) as c:
         yield c
 

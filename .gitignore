@@ -38,3 +38,7 @@ data/
 .idea/
 .vscode/*
 !.vscode/settings.json
+
+# GPU kit builds (contain collected data; shared by hand, never committed)
+handoff/
+RETURN.zip

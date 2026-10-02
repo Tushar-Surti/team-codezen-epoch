@@ -69,11 +69,11 @@ def transcribe(audio: Path, language: str | None = None, model: str | None = Non
 
 
 def chat_json(messages: list[dict], *, model: str | None = None, schema: dict | None = None,
-              temperature: float = 0.2, max_tokens: int = 4096) -> dict:
+              temperature: float = 0.2, max_tokens: int = 4096, **extra) -> dict:
     """Chat completion that must return a JSON object (schema-constrained when `schema` is given)."""
     payload: dict = {
         "model": model or os.environ.get("RETENT_GROQ_FAST_MODEL", "openai/gpt-oss-120b"),
-        "messages": messages, "temperature": temperature, "max_completion_tokens": max_tokens,
+        "messages": messages, "temperature": temperature, "max_completion_tokens": max_tokens, **extra,
     }
     if schema:
         payload["response_format"] = {"type": "json_schema", "json_schema": {"name": "out", "schema": schema}}
