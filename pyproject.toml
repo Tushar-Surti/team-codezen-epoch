@@ -5,6 +5,12 @@ members = ["packages/retent_core", "services/api", "ml"]
 [tool.uv.sources]
 retent-core = { workspace = true }
 
+# CUDA 12.8 wheels (RTX 40/50-series). Only torch is pulled from here; see ml/pyproject.toml.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
 [dependency-groups]
 dev = ["pytest>=8.3", "httpx>=0.28"]
 

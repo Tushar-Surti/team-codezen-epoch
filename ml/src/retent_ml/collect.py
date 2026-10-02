@@ -23,6 +23,7 @@ import shutil
 import tempfile
 import time
 from datetime import UTC, datetime, timedelta
+from itertools import zip_longest
 from pathlib import Path
 
 import yt_dlp
@@ -75,6 +76,15 @@ def _pick_caption(info: dict, lang: str) -> tuple[str, str] | None:
     return None
 
 
+def spoken_language(info: dict) -> str:
+    """The language actually spoken. YouTube's own ASR track ("<lang>-orig") is detected from the
+    audio, so it beats the uploader's metadata, which Hindi creators often leave set to English."""
+    orig = [k[: -len("-orig")] for k in (info.get("automatic_captions") or {}) if k.endswith("-orig")]
+    if orig:
+        return orig[0].split("-")[0]
+    return (info.get("language") or "").split("-")[0]
+
+
 def _fetch_json3(video_id: str, kind: str, key: str) -> list[dict]:
     """Download one caption track through yt-dlp (handles signing and impersonation)."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -117,7 +127,7 @@ def probe(video_id: str) -> tuple[dict | None, str]:
     if len(heat) < 50:
         return None, "no_heatmap"
 
-    lang = (info.get("language") or "").split("-")[0]
+    lang = spoken_language(info)
     caption = None
     for cand in ([lang] if lang in CAPTION_LANGS else []) + list(CAPTION_LANGS):
         if picked := _pick_caption(info, cand):
@@ -184,6 +194,38 @@ def fetch_pending_captions(sleep: float) -> None:
         time.sleep(sleep + random.random() * sleep)
 
 
+def fix_languages(sleep: float) -> None:
+    """Refetch captions for records whose caption language differs from the channel's language,
+    using the spoken language (the "-orig" ASR track) instead of the uploader's metadata."""
+    files = [f for f in sorted(OUT_DIR.glob("*.json"))
+             if (r := json.loads(f.read_text(encoding="utf-8")))["caption"].get("kind") != "asr"
+             and r["caption"].get("lang") != r.get("seed_lang")]
+    print(f"{len(files)} records to recheck", flush=True)
+    for f in files:
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        try:
+            with _ydl() as ydl:
+                info = ydl.extract_info(f"https://www.youtube.com/watch?v={rec['id']}", download=False)
+            lang = spoken_language(info)
+            picked = _pick_caption(info, lang) if lang in CAPTION_LANGS else None
+            if not picked or (lang, picked[1]) == (rec["caption"].get("lang"), rec["caption"].get("key")):
+                print(f"{rec['id']} keeps {rec['caption'].get('lang')} (spoken: {lang or '?'})", flush=True)
+                continue
+            segs = _fetch_json3(rec["id"], *picked)
+        except RateLimited:
+            print("  429 — stopping; rerun later", flush=True)
+            return
+        except Exception as exc:  # noqa: BLE001
+            print(f"{rec['id']} error {str(exc)[:80]}", flush=True)
+            continue
+        if len(segs) >= 20:
+            rec["caption"] = {"lang": lang, "kind": picked[0], "key": picked[1], "status": "ok", "segments": segs,
+                              "replaced": {k: rec["caption"].get(k) for k in ("lang", "kind", "key")}}
+            f.write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
+            print(f"{rec['id']} captions now {lang} {picked[0]} ({len(segs)} segments)", flush=True)
+        time.sleep(sleep + random.random() * sleep)
+
+
 def _load_probed() -> set[str]:
     """Ids with a final verdict. Errors are not final: they are retried on the next run."""
     if not PROBED_LOG.exists():
@@ -202,13 +244,17 @@ def _load_probed() -> set[str]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=Path, default=ROOT / "ml" / "seeds" / "channels.json")
-    ap.add_argument("--per-channel", type=int, default=40, help="Uploads to list per channel.")
+    ap.add_argument("--per-channel", type=int, default=12, help="Videos to probe per channel per run.")
     ap.add_argument("--sleep", type=float, default=2.5, help="Base pause between probes (seconds).")
     ap.add_argument("--only", help="Only these cells, comma-separated, e.g. tech/hi,vlog/hi.")
     ap.add_argument("--captions", action="store_true", help="Pass B: fetch captions for pending records only.")
+    ap.add_argument("--fix-language", action="store_true", help="Refetch captions in the spoken language.")
     args = ap.parse_args()
     if args.captions:
         fetch_pending_captions(args.sleep * 3)
+        return
+    if args.fix_language:
+        fix_languages(args.sleep)
         return
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -217,10 +263,16 @@ def main() -> None:
     probed = _load_probed()
     kept = len(list(OUT_DIR.glob("*.json")))
 
+    # Round-robin across cells, and across channels within a cell, so every pass adds channel
+    # diversity instead of exhausting a few big creators first. Reruns continue where they left off.
+    by_cell: dict[str, list[dict]] = {}
     for seed in seeds:
         cell = f"{seed['category']}/{seed['lang']}"
-        if only and cell not in only:
-            continue
+        if not only or cell in only:
+            by_cell.setdefault(cell, []).append(seed)
+    order = [s for group in zip_longest(*by_cell.values()) for s in group if s]
+    for seed in order:
+        cell = f"{seed['category']}/{seed['lang']}"
         try:
             # Listings are newest-first and carry no dates; list deeper so the window reaches
             # uploads older than MIN_AGE_DAYS even on channels that post daily.

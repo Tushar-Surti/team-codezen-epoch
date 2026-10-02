@@ -6,10 +6,12 @@ and transcribes it with Groq Whisper, keeping segment timestamps. The record's c
 replaced with `kind: "asr"` so training can tell ASR text from caption text.
 
 Groq's free tier allows about 2 hours of audio per hour and 8 per day, so `--max-minutes` caps a run.
+On a machine with an NVIDIA GPU, `--engine local` runs faster-whisper instead, with no quota.
 
 Run:
   uv run --package retent-ml python -m retent_ml.asr                  # missing/empty captions
   uv run --package retent-ml python -m retent_ml.asr --include-pending  # also 429-blocked ones
+  uv run --package retent-ml python -m retent_ml.asr --engine local     # local GPU (gpu extra)
 """
 
 from __future__ import annotations
@@ -47,6 +49,34 @@ def download_audio(video_id: str, folder: Path) -> Path:
     return files[0]
 
 
+class LocalWhisper:
+    """faster-whisper on the local GPU (float16; int8 has cuBLAS failures on RTX 50-series).
+
+    CTranslate2 needs the cuBLAS and cuDNN DLLs; the CUDA torch wheel ships them, so on Windows
+    their folder is added to the DLL search path instead of requiring a CUDA toolkit install."""
+
+    def __init__(self, model: str = "large-v3-turbo"):
+        import os
+        import sys
+
+        if sys.platform == "win32":
+            try:
+                import torch
+
+                os.add_dll_directory(str(Path(torch.__file__).parent / "lib"))
+            except ImportError:
+                pass
+        from faster_whisper import WhisperModel
+
+        self.name = model
+        self.model = WhisperModel(model, device="cuda", compute_type="float16")
+
+    def transcribe(self, audio: Path, language: str | None) -> list[dict]:
+        segments, _ = self.model.transcribe(str(audio), language=language, vad_filter=True, beam_size=5)
+        return [{"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()}
+                for s in segments if s.text.strip()]
+
+
 def _language(rec: dict) -> str | None:
     lang = rec["caption"].get("lang") or (rec.get("language") or "").split("-")[0] or rec.get("seed_lang")
     return lang if lang in ("en", "hi") else None
@@ -62,10 +92,15 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--include-pending", action="store_true", help="Also transcribe 429-blocked captions.")
     ap.add_argument("--max-minutes", type=float, default=110.0, help="Audio budget for this run.")
-    ap.add_argument("--model", default=None, help="Groq ASR model (default RETENT_GROQ_ASR_MODEL).")
+    ap.add_argument("--engine", choices=["groq", "local"], default="groq",
+                    help="groq (API, quota) or local (faster-whisper on this GPU, no quota).")
+    ap.add_argument("--model", default=None, help="ASR model (Groq default RETENT_GROQ_ASR_MODEL; local large-v3-turbo).")
     args = ap.parse_args()
-    if not groq.available():
-        raise SystemExit("GROQ_API_KEY is not set in .env")
+    local = LocalWhisper(args.model or "large-v3-turbo") if args.engine == "local" else None
+    if not local and not groq.available():
+        raise SystemExit("GROQ_API_KEY is not set in .env (or use --engine local)")
+    if local:
+        args.max_minutes = float("inf")
 
     files = sorted(OUT_DIR.glob("*.json"))
     todo = []
@@ -77,7 +112,7 @@ def main() -> None:
     print(f"{len(todo)} records need ASR", flush=True)
 
     used = 0.0
-    model = args.model or groq.asr_model()
+    model = f"local:{local.name}" if local else f"groq:{args.model or groq.asr_model()}"
     for _, duration, f in todo:
         if used + duration / 60 > args.max_minutes:
             print(f"audio budget reached ({used:.0f} min); rerun later to continue", flush=True)
@@ -87,17 +122,18 @@ def main() -> None:
             with tempfile.TemporaryDirectory() as tmp:
                 audio = download_audio(rec["id"], Path(tmp))
                 size_mb = audio.stat().st_size / 1e6
-                if size_mb > 24:
+                if size_mb > 24 and not local:
                     print(f"{rec['id']} audio {size_mb:.0f} MB is over the upload limit; skipped", flush=True)
                     continue
-                segs = groq.transcribe(audio, _language(rec), model)
+                segs = (local.transcribe(audio, _language(rec)) if local
+                        else groq.transcribe(audio, _language(rec), args.model or groq.asr_model()))
         except Exception as exc:  # noqa: BLE001 - keep going through the queue
             print(f"{rec['id']} error {str(exc)[:120]}", flush=True)
             time.sleep(3)
             continue
         used += duration / 60
         previous = {k: rec["caption"].get(k) for k in ("kind", "key", "status")}
-        rec["caption"] = {"lang": _language(rec), "kind": "asr", "key": f"groq:{model}",
+        rec["caption"] = {"lang": _language(rec), "kind": "asr", "key": model,
                           "status": "ok" if len(segs) >= 20 else "empty", "segments": segs,
                           "replaced": previous, "transcribed_at": datetime.now(UTC).isoformat()}
         f.write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")

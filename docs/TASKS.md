@@ -10,16 +10,16 @@ Update this file whenever a task changes state; it is the single source of truth
 
 | Phase | Done | Partial | Left |
 |---|---|---|---|
-| 0. Foundations | 6 | 1 | 2 |
-| 1. Data | 1 | 3 | 5 |
+| 0. Foundations | 6 | 3 | 0 |
+| 1. Data | 3 | 6 | 0 |
 | 2. Model & evaluation | 4 | 0 | 13 |
 | 3. Core loop | 11 | 1 | 1 |
 | 4. Differentiators | 0 | 4 | 10 |
 | 5. Validation & discovery | 0 | 0 | 5 |
 | 6. Finish | 0 | 1 | 7 |
-| 7. Pitch kit | 0 | 1 | 5 |
+| 7. Pitch kit | 1 | 1 | 4 |
 | 8. Showstoppers | 0 | 0 | 5 |
-| **Total** | **22** | **11** | **53** |
+| **Total** | **25** | **16** | **45** |
 
 ---
 
@@ -34,22 +34,22 @@ Update this file whenever a task changes state; it is the single source of truth
 | Visual direction chosen | You | ✅ | Revision Draft; brief in `apps/web/.impeccable/surfaces/` |
 | Monorepo scaffold (uv + pnpm) | Claude | ✅ | |
 | Add `ANTHROPIC_API_KEY` and `GROQ_API_KEY` to `.env` | You | 🟡 | Groq added and verified; Anthropic still missing (blocks Claude tasks) |
-| WSL2 + CUDA 12.8 + PyTorch setup on both Windows laptops | Data, ML | ⬜ | [TEAM_SETUP.md](TEAM_SETUP.md) |
-| Screenshot digitizer prototype (5 Studio screenshots) | ML | ⬜ | Feeds E4 and D2 |
+| WSL2 + CUDA 12.8 + PyTorch setup on both Windows laptops | Data, ML | 🟡 | Laptop with RTX 4050 done natively (torch 2.11 cu128, faster-whisper on GPU); second laptop: `uv sync --all-packages --all-extras` |
+| Screenshot digitizer prototype (5 Studio screenshots) | ML | 🟡 | `retent_ml.digitize` built and tested on synthetic light/dark charts; needs 5 real screenshots |
 
 ## Phase 1: Data
 
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| D1 pass A: metadata + "Most replayed" | Data | 🟡 | 105 tech/en kept so far; collector running on the Mac |
-| D1 pass B: captions | Data | 🟡 | 19 done, 86 waiting on the 429 limit; run `--captions` from other IPs |
-| Collect Hindi cells (tech/hi, education/hi, vlog/hi) | Data | 🟡 | Running on the Windows laptop with `--only tech/hi,education/hi,vlog/hi,education/en,vlog/en` |
+| D1 pass A: metadata + "Most replayed" | Data | 🟡 | Mac: 105 tech/en. Windows: 108 across 4 cells, collector running round-robin over all 6 cells; see [DATA_CARD.md](DATA_CARD.md) |
+| D1 pass B: captions | Data | 🟡 | Mac: 86 waiting on 429 (run `--captions`). Windows: captions arriving with pass A; `--fix-language` repairs Hindi videos given English captions |
+| Collect Hindi cells (tech/hi, education/hi, vlog/hi) | Data | 🟡 | Running on the Windows laptop; tech/hi 93, education/hi 5, vlog/hi 0 so far |
 | Groq Whisper fallback when captions are blocked | Claude | ✅ | Pass C: `python -m retent_ml.asr`; caption-less videos are now kept for it |
-| D1-media subset (~300 videos: audio and low-res video) | Data | ⬜ | For video-mode features (A3) |
-| D2: digitize 60–100 public Studio retention screenshots | Data | ⬜ | Absolute-level calibration; store the source URL for each |
-| D3: SponsorBlock segments for D1 videos | Data | ⬜ | Natural experiment for sponsor dips |
-| Share data via a private Hugging Face dataset repo | Data | ⬜ | |
-| Data card (counts per cell, yield, biases) | Data | ⬜ | |
+| D1-media subset (~300 videos: audio and low-res video) | Data | 🟡 | `retent_ml.media --limit 300` built (balanced across cells, no ffmpeg); not run yet |
+| D2: digitize 60–100 public Studio retention screenshots | Data | 🟡 | Tool + manifest + review overlays ready; screenshots must be found and saved by a person |
+| D3: SponsorBlock segments for D1 videos | Data | ✅ | `retent_ml.sponsorblock`; rerun after collecting (incremental) |
+| Share data via a private Hugging Face dataset repo | Data | 🟡 | `retent_ml.hub push/pull` built; needs `HF_TOKEN` and `RETENT_HF_DATASET` in `.env` |
+| Data card (counts per cell, yield, biases) | Data | ✅ | Generated: `retent_ml.datacard` → [DATA_CARD.md](DATA_CARD.md) |
 
 ## Phase 2: Model & evaluation
 
@@ -139,7 +139,7 @@ Update this file whenever a task changes state; it is the single source of truth
 |---|---|---|
 | README + architecture diagram | Claude | 🟡 |
 | Model card | ML | ⬜ |
-| Data card | Data | ⬜ |
+| Data card | Data | ✅ |
 | 2–3 min demo video | You | ⬜ |
 | Pitch deck | You + Claude | ⬜ |
 | Judge Q&A rehearsal ([PLAN.md §12](PLAN.md#12-judge-qa-prep-analytics-experts-will-ask-these)) | Everyone | ⬜ |
