@@ -1,0 +1,13 @@
+import { chromium } from "@playwright/test";
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await page.goto("http://localhost:3000/shorts?a=aca2525246c1", { waitUntil: "networkidle" });
+await page.getByRole("button", { name: /Find Shorts/ }).click();
+await page.waitForSelector("text=Short 1", { timeout: 120000 });
+await page.waitForTimeout(1200);
+await page.screenshot({ path: "../../.impeccable/review/shorts-1.png" });
+await page.getByRole("button", { name: /Render Short/ }).nth(1).click();
+await page.waitForSelector("text=Download MP4", { timeout: 180000 });
+await page.waitForTimeout(2500);
+await page.screenshot({ path: "../../.impeccable/review/shorts-2.png" });
+await browser.close();

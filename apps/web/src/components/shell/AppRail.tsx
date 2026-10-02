@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { EyeOff, FilePlus2, FlaskConical, FolderOpen, ImageUp, ScanSearch, Zap } from "lucide-react";
+import { EyeOff, FilePlus2, FlaskConical, FolderOpen, ImageUp, ScanSearch, Scissors, Zap } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,6 +9,7 @@ const NAV = [
   { href: "/projects", label: "Projects", icon: FolderOpen, match: ["/projects", "/a/"] },
   { href: "/new", label: "New", icon: FilePlus2, match: ["/new"] },
   { href: "/hooks", label: "Hook Lab", icon: Zap, match: ["/hooks"] },
+  { href: "/shorts", label: "Shorts", icon: Scissors, match: ["/shorts"] },
   { href: "/lab", label: "Accuracy", icon: FlaskConical, match: ["/lab"] },
   { href: "/blind", label: "Blind test", icon: EyeOff, match: ["/blind"] },
   { href: "/xray", label: "X-Ray", icon: ScanSearch, match: ["/xray"] },

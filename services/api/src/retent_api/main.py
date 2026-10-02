@@ -261,6 +261,60 @@ def _tail(a: Analysis) -> float:
     return max(0.0, a.meta.duration_seconds - max(s.end for s in a.sentences))
 
 
+@app.post("/api/shorts")
+def shorts(body: dict) -> dict:
+    """Shorts Finder: 3–4 clip candidates with packaging, scored on YouTube's real curve when available."""
+    from retent_core.shorts import find_clips, package
+
+    a = store.get(body.get("analysis_id", ""))
+    if a is None:
+        raise HTTPException(404, "Analysis not found")
+    heat = store.heatmap(a.id)
+    clips, source = find_clips(a, heat, int(body.get("n", 4)))
+    packs, prov = package(a, clips, body.get("engine", a.engine))
+    url = a.meta.source_url
+    video_id = url.split("v=")[-1][:11] if url and "v=" in url else None
+    return {
+        "analysis_id": a.id, "source": source, "full_video_url": url, "video_id": video_id,
+        "can_render": video_id is not None, "channel": a.meta.channel, "title": a.meta.title,
+        "provenance": prov.model_dump() if prov else None,
+        "clips": [{"id": f"c{i + 1}", "start": round(c.start, 2), "end": round(c.end, 2),
+                   "duration": round(c.end - c.start, 1), "score": round(c.score, 3), "text": c.text,
+                   "title": p["title"], "hook_text": p["hook_text"], "why": p["why"],
+                   "description": p["description"].replace("{FULL_VIDEO}", url or "<link to the full video>")}
+                  for i, (c, p) in enumerate(zip(clips, packs))],
+    }
+
+
+@app.post("/api/shorts/render")
+def shorts_render(body: dict) -> dict:
+    """Cut and render one vertical Short from the published video (about 20–40 s)."""
+    from retent_api.shorts_render import render
+
+    a = store.get(body.get("analysis_id", ""))
+    if a is None or not a.meta.source_url or "v=" not in a.meta.source_url:
+        raise HTTPException(400, "Rendering needs a published YouTube video.")
+    vid = a.meta.source_url.split("v=")[-1][:11]
+    try:
+        path = render(vid, float(body["start"]), float(body["end"]), str(body.get("hook_text", ""))[:80],
+                      a.meta.channel or "", a.meta.title)
+    except Exception as exc:  # noqa: BLE001 - surface a readable error
+        raise HTTPException(502, f"Couldn't render this Short: {str(exc)[:200]}") from exc
+    return {"file": path.name, "url": f"/api/shorts/file/{path.name}"}
+
+
+@app.get("/api/shorts/file/{name}")
+def shorts_file(name: str):
+    from fastapi.responses import FileResponse
+
+    from retent_api.shorts_render import OUT_DIR
+
+    path = (OUT_DIR / name).resolve()
+    if path.parent != OUT_DIR.resolve() or not path.exists():
+        raise HTTPException(404, "Not found")
+    return FileResponse(path, media_type="video/mp4", filename=name)
+
+
 @app.post("/api/simulate", response_model=Simulation)
 def simulate(req: SimulateRequest) -> Simulation:
     a = store.get(req.analysis_id)

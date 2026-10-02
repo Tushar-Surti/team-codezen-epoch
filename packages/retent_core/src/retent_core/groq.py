@@ -33,8 +33,9 @@ def available() -> bool:
     return bool(_keys())
 
 
-# Keys whose daily quota is spent, with the time they can be tried again.
-_exhausted: dict[str, float] = {}
+# (key, model) pairs whose daily quota is spent, with the time they can be tried again.
+# Groq limits are per account *and* per model, so a spent model doesn't block the others.
+_exhausted: dict[tuple[str, str], float] = {}
 
 
 def _post(path: str, *, retries: int = 4, timeout: float = 180.0, **kwargs) -> dict:
@@ -45,10 +46,11 @@ def _post(path: str, *, retries: int = 4, timeout: float = 180.0, **kwargs) -> d
     keys = _keys()
     if not keys:
         raise GroqError("GROQ_API_KEY is not set")
+    model = str((kwargs.get("json") or kwargs.get("data") or {}).get("model", ""))
     last = "no usable key"
-    for key in sorted(keys, key=lambda k: _exhausted.get(k, 0.0)):
-        if _exhausted.get(key, 0.0) > time.time():
-            last = "all Groq keys have hit their daily limit"
+    for key in sorted(keys, key=lambda k: _exhausted.get((k, model), 0.0)):
+        if _exhausted.get((key, model), 0.0) > time.time():
+            last = f"all Groq keys have hit their daily limit for {model}"
             continue
         for attempt in range(retries):
             try:
@@ -62,7 +64,7 @@ def _post(path: str, *, retries: int = 4, timeout: float = 180.0, **kwargs) -> d
                 daily = "per day" in res.text or "(TPD)" in res.text or "(RPD)" in res.text
                 last = f"{res.status_code}: {res.text[:200]}"
                 if res.status_code == 429 and (daily or wait > 30):
-                    _exhausted[key] = time.time() + max(wait, 60.0)
+                    _exhausted[(key, model)] = time.time() + max(wait, 60.0)
                     break  # next key
                 time.sleep(wait)
                 continue

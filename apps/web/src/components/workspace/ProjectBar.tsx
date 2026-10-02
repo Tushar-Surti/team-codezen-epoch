@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Download, Zap } from "lucide-react";
+import { Download, Scissors, Zap } from "lucide-react";
 import Link from "next/link";
 
 import type { Analysis } from "@/lib/contract.gen";
@@ -83,6 +83,12 @@ export function ProjectBar({ analysis, onExport }: { analysis: Analysis; onExpor
         className="inline-flex items-center gap-2 rounded-[6px] border border-rule-strong bg-paper-raised px-3 py-1.5 text-[13px] font-[580] text-ink transition-colors duration-200 hover:border-ink/40"
       >
         <Zap size={15} aria-hidden /> Hook Lab
+      </Link>
+      <Link
+        href={`/shorts?a=${analysis.id}`}
+        className="inline-flex items-center gap-2 rounded-[6px] border border-rule-strong bg-paper-raised px-3 py-1.5 text-[13px] font-[580] text-ink transition-colors duration-200 hover:border-ink/40"
+      >
+        <Scissors size={15} aria-hidden /> Shorts
       </Link>
       <button
         onClick={onExport}

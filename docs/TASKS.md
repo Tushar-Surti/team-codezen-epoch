@@ -20,8 +20,8 @@ Update this file whenever a task changes state; it is the single source of truth
 | 5. Validation & discovery | 2 | 0 | 3 |
 | 6. Finish | 2 | 1 | 5 |
 | 7. Pitch kit | 1 | 2 | 3 |
-| 8. Showstoppers | 0 | 0 | 5 |
-| **Total** | **40** | **17** | **31** |
+| 8. Showstoppers | 1 | 0 | 4 |
+| **Total** | **41** | **17** | **30** |
 
 ---
 
@@ -154,6 +154,6 @@ Update this file whenever a task changes state; it is the single source of truth
 |---|---|---|
 | G1 | Browser extension overlay on YouTube | ⬜ |
 | G2 | Connect your channel (YouTube Analytics OAuth) | ⬜ |
-| G3 | Shorts candidates from predicted spikes | ⬜ |
+| G3 | Shorts Finder: 3–4 Shorts from one long video (Most replayed peaks or predicted interest), AI titles/hooks, rendered 9:16 MP4 with a "Watch the full video" end card | ✅ |
 | G4 | Hindi interface toggle | ⬜ |
 | G5 | Challenger neural model vs LightGBM | ⬜ |
