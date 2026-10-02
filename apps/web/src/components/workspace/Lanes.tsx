@@ -28,6 +28,8 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
   const { selectedFlagId, selectFlag, playhead, setPlayhead } = useWorkspace();
   const duration = analysis.metrics.duration_seconds;
   const x = timeScale(width, duration);
+  const byTime = [...analysis.flags].sort((a, b) => a.start - b.start);
+  const tabStop = byTime.some((f) => f.id === selectedFlagId) ? selectedFlagId : byTime[0]?.id;
   const promise = analysis.promises[0];
   const pace = analysis.pacing.find((p) => p.key === "info_rate");
   const sections = analysis.sections.filter((s) => s.kind === "chapter").length
@@ -48,16 +50,36 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
       {width > 0 && (
         <div className="flex flex-col divide-y divide-rule border-y border-rule">
           {/* Drop risks */}
-          <div className="relative" style={{ height: LANE_H + 6 }}>
+          <div
+            className="relative"
+            style={{ height: LANE_H + 6 }}
+            role="toolbar"
+            aria-label="Drop risks in time order. Left and right arrows move between them."
+            onKeyDown={(e) => {
+              if (!["ArrowLeft", "ArrowRight", "Home", "End", "Escape"].includes(e.key)) return;
+              e.preventDefault();
+              if (e.key === "Escape") return selectFlag(null);
+              const i = byTime.findIndex((f) => f.id === (document.activeElement as HTMLElement)?.dataset.flag);
+              const j = e.key === "Home" ? 0 : e.key === "End" ? byTime.length - 1
+                : Math.min(byTime.length - 1, Math.max(0, i + (e.key === "ArrowRight" ? 1 : -1)));
+              const f = byTime[j];
+              (e.currentTarget.querySelector(`[data-flag="${f.id}"]`) as HTMLElement | null)?.focus();
+              selectFlag(f.id);
+              setPlayhead(f.start);
+            }}
+          >
             <LaneLabel>Drop risks</LaneLabel>
-            {analysis.flags.map((f) => {
+            {byTime.map((f) => {
               const h = 6 + f.severity * 4;
               const active = selectedFlagId === f.id;
               return (
                 <button
                   key={f.id}
                   type="button"
-                  aria-label={`${f.title}, severity ${f.severity} of 5`}
+                  data-flag={f.id}
+                  tabIndex={f.id === tabStop ? 0 : -1}
+                  aria-pressed={active}
+                  aria-label={`${fmtTime(f.start)}: ${f.title}, severity ${f.severity} of 5`}
                   onClick={() => {
                     selectFlag(active ? null : f.id);
                     setPlayhead(f.start);

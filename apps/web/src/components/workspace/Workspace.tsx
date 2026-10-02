@@ -9,6 +9,7 @@ import { revision } from "@/lib/revisions";
 import { useWorkspace } from "@/lib/workspace-store";
 
 import { CurvePanel } from "./CurvePanel";
+import { CurveTable } from "./CurveTable";
 import { ExportSheet, useExportSheet } from "./ExportSheet";
 import { FixQueue } from "./FixQueue";
 import { Lanes } from "./Lanes";
@@ -95,6 +96,7 @@ export function Workspace({ id }: { id: string }) {
               <CurvePanel analysis={analysis} focusFlag={focusFlag} />
             </div>
             {uncalibrated && <p className="mt-1 max-w-[80ch] text-[12px] text-ink-3">{uncalibrated.message}</p>}
+            <CurveTable analysis={analysis} sim={sim} draftKey={draft?.key ?? null} />
           </section>
           <section className="px-6 pt-4" aria-label="Timeline lanes">
             <Lanes analysis={analysis} />

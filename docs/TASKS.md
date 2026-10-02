@@ -13,13 +13,13 @@ Update this file whenever a task changes state; it is the single source of truth
 | 0. Foundations | 6 | 0 | 3 |
 | 1. Data | 0 | 2 | 7 |
 | 2. Model & evaluation | 4 | 0 | 13 |
-| 3. Core loop | 8 | 1 | 4 |
+| 3. Core loop | 11 | 1 | 1 |
 | 4. Differentiators | 0 | 4 | 10 |
 | 5. Validation & discovery | 0 | 0 | 5 |
 | 6. Finish | 0 | 1 | 7 |
 | 7. Pitch kit | 0 | 1 | 5 |
 | 8. Showstoppers | 0 | 0 | 5 |
-| **Total** | **18** | **9** | **59** |
+| **Total** | **21** | **9** | **56** |
 
 ---
 
@@ -86,9 +86,9 @@ Update this file whenever a task changes state; it is the single source of truth
 | Intake (script mode) with live stage progress | You + Claude | ✅ | |
 | Projects list | You + Claude | ✅ | |
 | Engine switch (Deep / Fast / Auto) | Claude | 🟡 | UI exists; does nothing until the LLM router lands |
-| Key moments (spikes) marked on the curve | You + Claude | ⬜ | |
-| Curve as a data table (accessibility) | You + Claude | ⬜ | |
-| Keyboard control of playhead and lanes | You + Claude | ⬜ | |
+| Key moments (spikes) marked on the curve | You + Claude | ✅ | Spikes marked in ink; dips keep the red wash |
+| Curve as a data table (accessibility) | You + Claude | ✅ | "Curve as a table" under the chart, with key moments and the revision column |
+| Keyboard control of playhead and lanes | You + Claude | ✅ | Curve is a slider: arrows, Shift, Home/End, `[` `]` jump between drops, Esc; arrows in the drop-risk lane |
 | Persist drafts on the server | Claude | ⬜ | Drafts live in browser memory today |
 
 ## Phase 4: Differentiators

@@ -12,7 +12,7 @@ import { revision } from "@/lib/revisions";
 import { useSize } from "@/lib/useSize";
 import { useWorkspace } from "@/lib/workspace-store";
 
-import { PAD_L, PAD_R, minuteTicks, timeScale } from "./geometry";
+import { PAD_L, PAD_R, jumpTargets, minuteTicks, retentionAt, timeScale } from "./geometry";
 import { penEllipse, penLeader } from "./penPath";
 
 const PAD_T = 18;
@@ -20,23 +20,12 @@ const PAD_B = 28;
 
 type Props = { analysis: Analysis; focusFlag: Flag | null };
 
-function retentionAt(bins: CurveBin[], duration: number, t: number): { r: number; lo: number; hi: number } {
-  if (t <= 0) return { r: 1, lo: 1, hi: 1 };
-  const xs = [0, ...bins.map((b, i) => ((i + 1) / bins.length) * duration)];
-  const pick = (key: "retention" | "lo" | "hi") => {
-    const ys = [1, ...bins.map((b) => b[key])];
-    const i = Math.min(xs.length - 2, Math.max(0, xs.findIndex((x) => x >= t) - 1));
-    const f = (t - xs[i]) / (xs[i + 1] - xs[i] || 1);
-    return ys[i] + (ys[i + 1] - ys[i]) * Math.min(1, Math.max(0, f));
-  };
-  return { r: pick("retention"), lo: pick("lo"), hi: pick("hi") };
-}
-
 export function CurvePanel({ analysis, focusFlag }: Props) {
   const [wrapRef, { width, height }] = useSize<HTMLDivElement>();
   const svgRef = useRef<SVGSVGElement>(null);
   const { playhead, setPlayhead, hoverTime, setHoverTime, drafts, activeDraft, selectFlag } = useWorkspace();
   const [dragging, setDragging] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   const duration = analysis.metrics.duration_seconds;
   const draft = drafts.find((d) => d.key === activeDraft && d.key !== "white");
@@ -104,15 +93,43 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
     const rect = svgRef.current!.getBoundingClientRect();
     return Math.min(duration, Math.max(0, x.invert(clientX - rect.left)));
   };
-  const hover = hoverTime != null ? retentionAt(analysis.curve.bins, duration, hoverTime) : null;
-  const hoverAfter = hoverTime != null && sim ? retentionAt(sim.curve.bins, sim.metrics.duration_seconds, hoverTime) : null;
+  // Keyboard: the curve is a slider for the playhead. Arrows step one bin (Shift: ten),
+  // [ and ] jump between drops and key moments, Esc clears the selected drop.
+  const targets = useMemo(() => jumpTargets(analysis), [analysis]);
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const step = (duration / 100) * (e.shiftKey ? 10 : 1);
+    let next: number | null = null;
+    if (e.key === "ArrowRight" || e.key === "ArrowUp") next = playhead + step;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowDown") next = playhead - step;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = duration;
+    else if (e.key === "]" || e.key === "PageDown" || e.key === "[" || e.key === "PageUp") {
+      const fwd = e.key === "]" || e.key === "PageDown";
+      const hit = fwd ? targets.find((m) => m.t > playhead + 0.5) : [...targets].reverse().find((m) => m.t < playhead - 0.5);
+      if (hit) {
+        next = hit.t;
+        selectFlag(hit.flagId);
+      }
+    } else if (e.key === "Escape") selectFlag(null);
+    else return;
+    e.preventDefault();
+    if (next != null) setPlayhead(Math.min(duration, Math.max(0, next)));
+  };
+
+  // The readout follows the pointer, or the playhead while the curve has keyboard focus.
+  const probeTime = hoverTime ?? (focused ? playhead : null);
+  const hover = probeTime != null ? retentionAt(analysis.curve.bins, duration, probeTime) : null;
+  const hoverAfter = probeTime != null && sim ? retentionAt(sim.curve.bins, sim.metrics.duration_seconds, probeTime) : null;
+  const atPlayhead = retentionAt(analysis.curve.bins, duration, playhead);
   const dips = analysis.metrics.key_moments.filter((m) => m.kind === "dip");
+  const spikes = analysis.metrics.key_moments.filter((m) => m.kind === "spike");
   const payoff = analysis.metrics.payoff_time;
 
   return (
     <figure className="relative h-full min-h-[240px]" aria-labelledby="curve-title">
       <figcaption className="sr-only" id="curve-title">
         Predicted retention: {pct(analysis.metrics.intro_retention)} still watching at 0:30, average {pct(analysis.metrics.apv)} viewed.
+        The full curve is also available as a table below the chart.
       </figcaption>
       <div ref={wrapRef} className="absolute inset-0">
         {width > 0 && (
@@ -120,7 +137,17 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
             ref={svgRef}
             width={width}
             height={height}
-            className="block touch-none select-none"
+            role="slider"
+            tabIndex={0}
+            aria-label="Playhead on the predicted retention curve. Arrow keys move, [ and ] jump between drops."
+            aria-valuemin={0}
+            aria-valuemax={Math.round(duration)}
+            aria-valuenow={Math.round(playhead)}
+            aria-valuetext={`${fmtTime(playhead)}, ${pct(atPlayhead.r)} still watching`}
+            onKeyDown={onKeyDown}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            className="block touch-none rounded-[4px] select-none focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             onPointerMove={(e) => {
               const t = toTime(e.clientX);
               setHoverTime(t);
@@ -164,6 +191,22 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
               <path className="draft-line" d={after.line} fill="none" stroke={rev.ink} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
             )}
 
+            {/* Key moments: spikes, the stretches the model expects to hold attention best (ink, never red) */}
+            {spikes.map((m, i) => {
+              const t = (m.start + m.end) / 2;
+              const cy = y(retentionAt(analysis.curve.bins, duration, t).r);
+              // Neighbouring spikes share one label so the words never collide.
+              const crowded = spikes.slice(0, i).some((o) => Math.abs(x((o.start + o.end) / 2) - x(t)) < 48);
+              return (
+                <g key={`spike-${i}`} transform={`translate(${x(t)},0)`} className="pointer-events-none" aria-hidden>
+                  <line y1={cy - 5} y2={cy - 19} stroke="var(--ink-2)" strokeWidth={1} />
+                  <path d={`M0,${cy - 27} l4.5,7 h-9 z`} fill="var(--ink-2)" />
+                  <circle cy={cy} r={3} fill="var(--paper)" stroke="var(--ink-2)" strokeWidth={1.5} />
+                  {!crowded && <text y={cy - 31} textAnchor="middle" className="fill-ink-2 text-[11px] font-[550]">Spike</text>}
+                </g>
+              );
+            })}
+
             {/* Payoff marker */}
             {payoff != null && (
               <g transform={`translate(${x(payoff)},0)`}>
@@ -193,7 +236,7 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
             )}
 
             {/* Playhead: a brass brad on a hairline */}
-            {playhead > 0 && (
+            {(playhead > 0 || focused) && (
               <g transform={`translate(${x(Math.min(playhead, duration))},0)`} className="pointer-events-none">
                 <line y1={PAD_T - 4} y2={y(0)} stroke="var(--brass)" strokeWidth={1.5} />
                 <circle cy={PAD_T - 6} r={5} fill="var(--brass)" stroke="var(--paper)" strokeWidth={2} />
@@ -201,21 +244,21 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
             )}
 
             {/* Crosshair + readout */}
-            {hover && hoverTime != null && (
+            {hover && probeTime != null && (
               <g className="pointer-events-none">
-                <line x1={x(hoverTime)} x2={x(hoverTime)} y1={PAD_T} y2={y(0)} stroke="var(--ink)" strokeWidth={1} opacity={0.35} />
-                <circle cx={x(hoverTime)} cy={y(hover.r)} r={4.5} fill="var(--ink)" stroke="var(--paper)" strokeWidth={2} />
-                {hoverAfter && rev && <circle cx={x(hoverTime)} cy={y(hoverAfter.r)} r={4.5} fill={rev.ink} stroke="var(--paper)" strokeWidth={2} />}
+                <line x1={x(probeTime)} x2={x(probeTime)} y1={PAD_T} y2={y(0)} stroke="var(--ink)" strokeWidth={1} opacity={0.35} />
+                <circle cx={x(probeTime)} cy={y(hover.r)} r={4.5} fill="var(--ink)" stroke="var(--paper)" strokeWidth={2} />
+                {hoverAfter && rev && <circle cx={x(probeTime)} cy={y(hoverAfter.r)} r={4.5} fill={rev.ink} stroke="var(--paper)" strokeWidth={2} />}
               </g>
             )}
           </svg>
         )}
-        {hover && hoverTime != null && width > 0 && (
+        {hover && probeTime != null && width > 0 && (
           <div
             className="pointer-events-none absolute z-10 min-w-[168px] rounded-[7px] border border-rule bg-paper-raised px-3 py-2 shadow-[0_6px_20px_-6px_rgb(23_23_26/0.25)]"
-            style={{ left: Math.min(width - 190, x(hoverTime) + 12), top: 8 }}
+            style={{ left: Math.min(width - 190, x(probeTime) + 12), top: 8 }}
           >
-            <div className="tnum text-[12px] text-ink-3">{fmtTime(hoverTime)}</div>
+            <div className="tnum text-[12px] text-ink-3">{fmtTime(probeTime)}</div>
             <div className="mt-1 flex items-baseline gap-2">
               <span className="inline-block h-[2px] w-3 translate-y-[-3px] bg-ink" />
               <span className="tnum text-[17px] font-[640]">{pct(hover.r)}</span>
