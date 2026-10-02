@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
+
+# Tests pin the rules-only engine so results don't depend on whichever trained model is on disk.
+os.environ["RETENT_MODELS_DIR"] = str(Path(__file__).resolve().parent / "_no_models")
 
 from retent_core.contract import Category, InputMode, Language, VideoMeta
 from retent_core.features import TimedSentence

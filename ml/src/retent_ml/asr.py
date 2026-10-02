@@ -96,6 +96,7 @@ def main() -> None:
                     help="groq (API, quota) or local (faster-whisper on this GPU, no quota).")
     ap.add_argument("--model", default=None, help="ASR model (Groq default RETENT_GROQ_ASR_MODEL; local large-v3-turbo).")
     ap.add_argument("--only", help="Only these cells, comma-separated, e.g. tech/hi,vlog/hi (spend quota where data is thin).")
+    ap.add_argument("--skip-in", type=Path, help="Skip videos present in this d1 folder (e.g. a kit someone else is transcribing).")
     args = ap.parse_args()
     local = LocalWhisper(args.model or "large-v3-turbo") if args.engine == "local" else None
     if not local and not groq.available():
@@ -104,6 +105,8 @@ def main() -> None:
         args.max_minutes = float("inf")
 
     files = sorted(OUT_DIR.glob("*.json"))
+    skip = {p.name for p in args.skip_in.glob("*.json")} if args.skip_in else set()
+    files = [f for f in files if f.name not in skip]
     todo = []
     for f in files:
         rec = json.loads(f.read_text(encoding="utf-8"))

@@ -1,0 +1,10 @@
+import { chromium } from "@playwright/test";
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await page.goto("http://localhost:3000/hooks", { waitUntil: "networkidle" });
+await page.waitForTimeout(600);
+await page.getByRole("button", { name: /Pitch 5 hooks/ }).click();
+await page.waitForSelector("text=Your current opening", { timeout: 60000 });
+await page.waitForTimeout(1800);
+await page.screenshot({ path: "../../.impeccable/review/hooks-1.png" });
+await browser.close();

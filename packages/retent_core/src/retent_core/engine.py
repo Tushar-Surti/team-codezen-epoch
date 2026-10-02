@@ -12,6 +12,7 @@ marked "uncalibrated" and no "typical" band is shown.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Protocol
@@ -122,6 +123,58 @@ class HeuristicInterest:
         return out
 
 
+class TrainedInterest:
+    """Position prior + LightGBM residual on text features (trained by retent_ml.train).
+
+    Contributions keep the engine's per-feature shape: the prior lands in the position column
+    ("pct"), and each text feature gets its SHAP contribution from LightGBM (pred_contrib)."""
+
+    def __init__(self, models_dir: Path):
+        import lightgbm as lgb
+
+        card = json.loads((models_dir / "model_card.json").read_text(encoding="utf-8"))
+        self.booster = lgb.Booster(model_file=str(models_dir / "interest_lgbm.txt"))
+        self.prior = np.array(json.loads((models_dir / "position_prior.json").read_text(encoding="utf-8")))
+        self.cols = [BIN_FEATURES.index(c) for c in card["features"]]
+        if self.booster.num_feature() != len(self.cols) or len(self.prior) != N_BINS:
+            raise ValueError("model files don't match this feature set")
+        self.version = card["version"]
+        self.trained_on = int(card["trained_on"])
+        self.smooth = int(card.get("smooth_bins", 1))
+
+    def contributions(self, bins: np.ndarray) -> np.ndarray:
+        out = np.zeros((bins.shape[0], len(BIN_FEATURES)), dtype=np.float32)
+        contrib = self.booster.predict(bins[:, self.cols], pred_contrib=True)
+        out[:, self.cols] = contrib[:, :-1]
+        out[:, BIN_FEATURES.index("pct")] += self.prior[: bins.shape[0]] + contrib[:, -1]
+        if self.smooth > 1:  # same moving average as training, per feature (keeps contributions additive)
+            w = self.smooth
+            out = np.stack([np.convolve(np.pad(c, w // 2, mode="edge"), np.ones(w) / w, mode="valid")
+                            for c in out.T], axis=1).astype(np.float32)
+        return out
+
+
+MODELS_DIR = Path(os.environ.get("RETENT_MODELS_DIR", Path(__file__).resolve().parents[4] / "models"))
+_default_model: InterestModel | None = None
+
+
+def default_model() -> InterestModel:
+    """The trained model when its files exist, otherwise the rules-only v0 scorer."""
+    global _default_model
+    if _default_model is None:
+        try:
+            _default_model = TrainedInterest(MODELS_DIR)
+        except Exception:  # noqa: BLE001 - missing or stale files: fall back to rules
+            _default_model = HeuristicInterest()
+    return _default_model
+
+
+def reload_model() -> InterestModel:
+    global _default_model
+    _default_model = None
+    return default_model()
+
+
 @dataclass
 class Prediction:
     retention: np.ndarray  # survival after each bin (N_BINS,)
@@ -176,7 +229,7 @@ def intro_factor(fs: FeatureSet) -> float:
 
 
 def predict(fs: FeatureSet, category: str, model: InterestModel | None = None) -> Prediction:
-    model = model or HeuristicInterest()
+    model = model or default_model()
     base = BASELINES.get(category, Baseline())
     ifac = intro_factor(fs)
     base = replace(base, intro_drop=min(0.6, base.intro_drop * ifac))

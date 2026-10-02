@@ -1,0 +1,12 @@
+import { chromium } from "@playwright/test";
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await page.goto("http://localhost:3000/blind", { waitUntil: "networkidle" });
+await page.locator("aside li button").nth(2).click();
+await page.waitForTimeout(800);
+await page.getByRole("button", { name: "Predict blind" }).click();
+await page.waitForTimeout(1800);
+await page.getByRole("button", { name: /Reveal YouTube/ }).click();
+await page.waitForTimeout(3200);
+await page.screenshot({ path: "../../.impeccable/review/blind-1.png" });
+await browser.close();

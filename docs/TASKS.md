@@ -14,14 +14,14 @@ Update this file whenever a task changes state; it is the single source of truth
 |---|---|---|---|
 | 0. Foundations | 6 | 3 | 0 |
 | 1. Data | 4 | 6 | 1 |
-| 2. Model & evaluation | 7 | 0 | 10 |
+| 2. Model & evaluation | 9 | 2 | 6 |
 | 3. Core loop | 12 | 0 | 1 |
-| 4. Differentiators | 0 | 4 | 10 |
-| 5. Validation & discovery | 0 | 0 | 5 |
-| 6. Finish | 1 | 1 | 6 |
+| 4. Differentiators | 1 | 4 | 9 |
+| 5. Validation & discovery | 2 | 0 | 3 |
+| 6. Finish | 2 | 1 | 5 |
 | 7. Pitch kit | 1 | 1 | 4 |
 | 8. Showstoppers | 0 | 0 | 5 |
-| **Total** | **31** | **15** | **42** |
+| **Total** | **37** | **17** | **34** |
 
 ---
 
@@ -68,12 +68,12 @@ Update this file whenever a task changes state; it is the single source of truth
 | LLM fix writing in the creator's language and voice | Claude | ✅ | Writes in the script's own language/script; guards against invented timings and content; every fix re-simulated with the real text |
 | Dual labeling of D1 (Claude Batches + Groq) + agreement κ | Claude | ⬜ | |
 | Calibrate speaking rates per language/category from captions | Claude | ⬜ | Writes `models/speaking_rates.json` |
-| LightGBM LambdaRank interest model, GroupKFold by channel | Claude | ⬜ | Needs ≥300 captioned videos |
+| LightGBM LambdaRank interest model, GroupKFold by channel | Claude | ✅ | Position prior + LightGBM residual on text features, smoothed; `retent_ml.train` in ~5 s; served by the engine automatically |
 | Fit hazard baselines on D2 → `models/baselines.json` | Claude | ⬜ | Turns curves "calibrated" |
 | Ensemble uncertainty band (5 fold models) | Claude | ⬜ | |
-| SHAP attributions for the trained model | Claude | ⬜ | Same `Signal` shape as today |
-| Baselines: position-only, Claude zero-shot, Groq zero-shot, random | Claude | ⬜ | |
-| `eval_report.json` + `norms.json` (`ml/eval/run.py`) | Claude | ⬜ | Feeds E1 and E5 |
+| SHAP attributions for the trained model | Claude | ✅ | Same `Signal` shape as today |
+| Baselines: position-only, Claude zero-shot, Groq zero-shot, random | Claude | 🟡 | Position, rules-v0 and random done; Groq zero-shot still to add |
+| `eval_report.json` + `norms.json` (`ml/eval/run.py`) | Claude | 🟡 | `eval_report.json` done (GroupKFold by channel, 95% CIs, per-video overlays); norms still to do |
 | Category norms on each flag (`Flag.norm`) | Claude | ⬜ | "Top Hindi tech reviews hook by 0:08" |
 | Missing flags: chapter skip, visual/audio monotony | Claude | ⬜ | Monotony needs video mode |
 
@@ -106,7 +106,7 @@ Update this file whenever a task changes state; it is the single source of truth
 | C3 | Open-loop arcs | Claude | 🟡 | Lane works; LLM detection will find far more loops |
 | C4 | Redundancy map view (recurrence plot) | You + Claude | 🟡 | Data computed in every analysis; no UI yet |
 | C5 | Pacing lanes: words/min, fillers; video lanes | You + Claude | 🟡 | New-info lane only |
-| D4 | Hook Lab: Claude vs Groq hooks, ranked by the model | You + Claude | ⛔ | Needs keys |
+| D4 | Hook Lab: Claude vs Groq hooks, ranked by the model | You + Claude | ✅ | `/hooks` + `POST /api/hooks`: LLM pitches 5 hooks in the creator's voice; the model re-simulates and ranks them |
 | D5 | Title Fit | You + Claude | ⬜ | |
 | D6 | Chapter Advisor | Claude | ⬜ | Chapter export from sections exists |
 | D7 | Exports: FCPXML / Premiere XML, PDF report | Claude | 🟡 | EDL, script, chapters and CSV done |
@@ -118,8 +118,8 @@ Update this file whenever a task changes state; it is the single source of truth
 
 | ID | Task | Owner | Status | Notes |
 |---|---|---|---|---|
-| E1 | Validation Lab (renders `eval_report.json`) | You + Claude | ⬜ | Waits on the eval report |
-| E2 | Blind test: any public URL → predict → reveal actual | You + Claude | ⬜ | Fixtures already store the real curve |
+| E1 | Validation Lab (renders `eval_report.json`) | You + Claude | ✅ | `/lab`: baselines with CIs, by category, top signals, best/typical/worst gallery, limits |
+| E2 | Blind test: any public URL → predict → reveal actual | You + Claude | ✅ | `/blind`: out-of-fold blind prediction, then YouTube's curve sweeps in, with scores |
 | E3 | Channel X-Ray | You + Claude | ⬜ | |
 | E4 | Retention Import (screenshot → curve → score) | You | ⬜ | Digitizer from Phase 0 |
 | E5 | Category Norms page | You + Claude | ⬜ | Waits on `norms.json` |
@@ -128,7 +128,7 @@ Update this file whenever a task changes state; it is the single source of truth
 
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Landing page (impeccable surface round; GSAP ScrollTrigger + Lenis story) | You + Claude | ⬜ | You pick the layout on the decision page |
+| Landing page (impeccable surface round; GSAP ScrollTrigger + Lenis story) | You + Claude | ✅ | Hero with a marked-up script, GSAP scroll story on the real sample, live proof numbers, Lenis |
 | Mobile layout: rail → bottom bar, stacked panels | You + Claude | ⬜ | Desktop done; phone width cramped |
 | impeccable critique → audit → harden → polish | You + Claude | ⬜ | |
 | Finish reviewer + DESIGN.md (documenter) | Claude | ⬜ | Required to close the direction contract |

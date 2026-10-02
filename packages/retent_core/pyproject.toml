@@ -9,6 +9,7 @@ dependencies = [
     "httpx>=0.28",
     "anthropic>=1.0",
     "python-dotenv>=1.0",
+    "lightgbm>=4.5",
 ]
 
 [build-system]

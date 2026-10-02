@@ -21,7 +21,8 @@ from retent_core.contract import (
 from retent_core.engine import load_baselines
 from retent_core.pipeline import analyze_sentences, sentences_from_script
 from retent_core.llm import LLMError
-from retent_core.semantic import Semantic, read_script, write_fixes
+from retent_core.contract import EditOp, EditOpKind
+from retent_core.semantic import Semantic, read_script, write_fixes, write_hooks
 from retent_core.simulator import apply_ops, delta, edited_semantic, run
 from retent_core.text import detect_language
 from retent_api.jobs import Jobs
@@ -51,6 +52,37 @@ def samples() -> list[dict]:
         s = json.loads(p.read_text(encoding="utf-8"))
         out.append({k: s.get(k) for k in ("id", "label", "note", "title", "category", "thumbnail_text", "script")})
     return out
+
+
+def _eval_report() -> dict:
+    import json
+
+    path = ROOT / "models" / "eval_report.json"
+    if not path.exists():
+        raise HTTPException(404, "No evaluation report yet. Run: python -m retent_ml.train")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@app.get("/api/eval")
+def eval_summary() -> dict:
+    """Held-out evaluation (GroupKFold by channel): summary plus per-video metrics, no series."""
+    import json
+
+    r = _eval_report()
+    card_path = ROOT / "models" / "model_card.json"
+    card = json.loads(card_path.read_text(encoding="utf-8")) if card_path.exists() else {}
+    videos = [{k: v for k, v in x.items() if k != "series"} for x in r["videos"]]
+    return {**{k: v for k, v in r.items() if k != "videos"}, "videos": videos,
+            "top_features": list(card.get("importance_gain", {}))[:8]}
+
+
+@app.get("/api/eval/videos/{video_id}")
+def eval_video(video_id: str) -> dict:
+    """One held-out video with predicted vs actual series (for overlays and the blind test)."""
+    for x in _eval_report()["videos"]:
+        if x["id"] == video_id:
+            return x
+    raise HTTPException(404, "Video not in the evaluation set")
 
 
 @app.get("/api/analyses")
@@ -136,6 +168,36 @@ async def job_events(job_id: str) -> StreamingResponse:
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/hooks")
+def hooks(body: dict) -> dict:
+    """Hook Lab: an LLM writes opening hooks; the retention model re-simulates and ranks each one."""
+    from retent_core.features import TimedSentence
+
+    a = store.get(body.get("analysis_id", ""))
+    if a is None:
+        raise HTTPException(404, "Analysis not found")
+    raw = store.get_raw(a.id) or {}
+    semantic = Semantic.from_json(raw["_semantic"]) if raw.get("_semantic") else None
+    sents = [TimedSentence(s.id, s.text, s.start, s.end, s.lang) for s in a.sentences]
+    payoff_id = a.metrics.payoff_sentence_id
+    try:
+        written, prov = write_hooks(sents, a.meta.title, a.meta.category, body.get("engine", a.engine), payoff_id,
+                                    int(body.get("n", 5)))
+    except LLMError as exc:
+        raise HTTPException(503, f"No language model available to write hooks: {exc}") from exc
+    before = run(sents, a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id, semantic=semantic)
+    out = []
+    for h in written:
+        ops = [EditOp(op=EditOpKind.insert, after_sentence_id="", new_text=h["text"], note="hook")]
+        after = run(apply_ops(sents, ops), a.meta.title, a.meta.thumbnail_text, a.meta.category, payoff_id=payoff_id,
+                    semantic=edited_semantic(semantic, ops))
+        out.append({**h, "delta": delta(before, after).model_dump(),
+                    "intro_retention": round(after.metrics.intro_retention, 4)})
+    out.sort(key=lambda h: (h["delta"]["intro_retention"], h["delta"]["viewers_at_payoff"] or 0), reverse=True)
+    return {"analysis_id": a.id, "current_opening": a.sentences[0].text if a.sentences else "",
+            "current_intro_retention": a.metrics.intro_retention, "provenance": prov.model_dump(), "hooks": out}
 
 
 @app.post("/api/simulate", response_model=Simulation)

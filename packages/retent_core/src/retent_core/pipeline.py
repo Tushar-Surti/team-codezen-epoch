@@ -16,7 +16,7 @@ from retent_core.contract import (
     N_BINS, Analysis, Curve, CurveBin, Engine, Fix, KeyMoment, Language, Metrics, ModelInfo, PacingLane,
     Redundancy, Section, Sentence, VideoMeta, Warning_,
 )
-from retent_core.engine import InterestModel, key_moments
+from retent_core.engine import InterestModel, default_model, key_moments
 from retent_core.features import TimedSentence, redundancy_matrix
 from retent_core.flags import build_flags
 from retent_core.simulator import apply_ops, delta, edited_semantic, run
@@ -88,6 +88,7 @@ def analyze_sentences(
 ) -> Analysis:
     """`semantic` is the LLM read of the script (retent_core.semantic.Semantic) or None for keyword cues.
     `writer(flags, fixes, payoff_id) -> fixes` fills in fix text (an LLM call) before fixes are simulated."""
+    model = model or default_model()
     base = run(sents, meta.title, meta.thumbnail_text, meta.category, model, semantic=semantic)
     fs, pred = base.features, base.prediction
     flags, fixes, promises, loops = build_flags(fs, pred, meta.title, meta.category)

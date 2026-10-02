@@ -205,7 +205,10 @@ def build_features(
     thumbnail_text: str | None = None,
     embedder: Embedder | None = None,
     semantic=None,
+    duration: float | None = None,
 ) -> FeatureSet:
+    """`duration` is the real video length when known (captions often end before the outro),
+    so the 100 bins line up with YouTube's own 1% grid."""
     if not sentences:
         raise ValueError("No sentences to analyze.")
     embedder = embedder or HashedNgramEmbedder()
@@ -215,7 +218,7 @@ def build_features(
     sent, sim = _sentence_features(sentences, vectors, title_vec)
     if semantic is not None:
         _apply_semantic(sentences, sent, semantic)
-    duration = max(s.end for s in sentences)
+    duration = max(duration or 0.0, max(s.end for s in sentences))
     bins, edges = _bin_matrix(sentences, sent, duration)
     return FeatureSet(sentences, duration, sent, bins, sim, vectors, title_vec, edges, {"semantic": semantic})
 

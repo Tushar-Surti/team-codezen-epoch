@@ -1,7 +1,8 @@
 "use client";
 
 import clsx from "clsx";
-import { Download } from "lucide-react";
+import { Download, Zap } from "lucide-react";
+import Link from "next/link";
 
 import type { Analysis } from "@/lib/contract.gen";
 import { CATEGORY_LABEL, LANGUAGE_LABEL, MODE_LABEL, fmtTime } from "@/lib/format";
@@ -77,6 +78,12 @@ export function ProjectBar({ analysis, onExport }: { analysis: Analysis; onExpor
         )}
       </div>
 
+      <Link
+        href={`/hooks?a=${analysis.id}`}
+        className="inline-flex items-center gap-2 rounded-[6px] border border-rule-strong bg-paper-raised px-3 py-1.5 text-[13px] font-[580] text-ink transition-colors duration-200 hover:border-ink/40"
+      >
+        <Zap size={15} aria-hidden /> Hook Lab
+      </Link>
       <button
         onClick={onExport}
         className="inline-flex items-center gap-2 rounded-[6px] border border-rule-strong bg-paper-raised px-3 py-1.5 text-[13px] font-[580] text-ink transition-colors duration-200 hover:border-ink/40"

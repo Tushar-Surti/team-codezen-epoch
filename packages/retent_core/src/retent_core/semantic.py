@@ -262,3 +262,42 @@ def write_fixes(sents: list[TimedSentence], title: str, flags: list[Flag], fixes
         out.append(fx.model_copy(update={"ops": ops, "title": w.get("title") or fx.title,
                                          "rationale": w.get("rationale") or fx.rationale, "provenance": prov}))
     return out, prov
+
+
+# ── Hook Lab ─────────────────────────────────────────────────────────────────
+
+HOOK_VERSION = "hooks-v1"
+HOOK_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "hooks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"angle": {"type": "string"}, "text": {"type": "string"}},
+                "required": ["angle", "text"], "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["hooks"], "additionalProperties": False,
+}
+HOOK_SYSTEM = """You write the first line a YouTube creator says, the hook that stops viewers leaving in the first
+30 seconds. Write distinct hooks, each from a different angle: a sharp question, the stakes, a preview of the payoff,
+a surprising number from the script, a bold claim the video backs up.
+Rules: the creator's own language, script and voice (Hinglish in Latin letters stays Hinglish; Devanagari stays
+Devanagari). One or two spoken sentences, under 8 seconds. Never invent facts, numbers, results or content that are
+not in the script, and never promise a timing. Return JSON only."""
+
+
+def write_hooks(sents: list[TimedSentence], title: str, category: str, engine: Engine | str = Engine.auto,
+                payoff_id: str | None = None, n: int = 5) -> tuple[list[dict], Provenance]:
+    by_id = {s.id: s for s in sents}
+    payoff = by_id.get(payoff_id or "")
+    body = "\n".join(s.text for s in sents[:60])
+    user = (f"Video title: {title}\nCategory: {category}\n"
+            + (f"The answer the title promises lands at {fmt_time(payoff.start)}: “{payoff.text}”\n" if payoff else "")
+            + f"\nScript (opening and body):\n{body}\n\nWrite {n} hooks.")
+    data, prov = complete_json(role="write", engine=engine, system=HOOK_SYSTEM, user=user, schema=HOOK_SCHEMA,
+                               prompt_version=HOOK_VERSION, effort="medium")
+    hooks = [{"angle": h["angle"].strip(), "text": _sanitize(h["text"])} for h in data.get("hooks", []) if h.get("text", "").strip()]
+    return hooks[:n], prov
