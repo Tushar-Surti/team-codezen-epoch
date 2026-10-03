@@ -33,7 +33,7 @@ export function RoughCutPlayer({ analysisId }: { analysisId: string }) {
         fromVideo.current = true;
         setPlayhead(e.currentTarget.currentTime);
       }}
-      className="aspect-video w-full rounded-[6px] bg-ink"
+      className="aspect-video w-full rounded-control border border-line bg-black"
     />
   );
 }

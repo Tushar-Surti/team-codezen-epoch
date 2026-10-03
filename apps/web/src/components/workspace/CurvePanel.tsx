@@ -13,10 +13,11 @@ import { useSize } from "@/lib/useSize";
 import { useWorkspace } from "@/lib/workspace-store";
 
 import { PAD_L, PAD_R, jumpTargets, minuteTicks, retentionAt, timeScale } from "./geometry";
-import { penEllipse, penLeader } from "./penPath";
 
 const PAD_T = 18;
 const PAD_B = 28;
+const NOTE_W = 240;
+const NOTE_H = 58;
 
 type Props = { analysis: Analysis; focusFlag: Flag | null };
 
@@ -47,40 +48,35 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
   const base = useMemo(() => pathsFor(analysis.curve.bins, duration), [analysis, duration, x, y]); // eslint-disable-line react-hooks/exhaustive-deps
   const after = useMemo(() => (sim ? pathsFor(sim.curve.bins, sim.metrics.duration_seconds) : null), [sim, x, y]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Biggest drop (or the selected flag) gets the script doctor's red-pen circle.
-  const pen = useMemo(() => {
+  // The biggest drop (or the selected flag): a shaded span with a bracket, an end marker and a callout.
+  const note = useMemo(() => {
     if (!focusFlag || width < 200) return null;
-    const x1 = x(focusFlag.start), x2 = x(Math.max(focusFlag.end, focusFlag.start + duration * 0.02));
-    const a = retentionAt(analysis.curve.bins, duration, focusFlag.start).r;
-    const b = retentionAt(analysis.curve.bins, duration, focusFlag.end).r;
-    let cx = (x1 + x2) / 2;
-    const cy = (y(a) + y(b)) / 2;
-    const rx = Math.max(22, (x2 - x1) / 2 + 14);
-    // Keep the ellipse inside the plot vertically too (long spans would otherwise run off the top).
-    const ry = Math.min(Math.max(18, Math.abs(y(a) - y(b)) / 2 + 16), cy - PAD_T + 2, y(0) - cy - 2);
-    // Keep the felt-tip inside the plot so it never scribbles over the axis labels.
-    cx = Math.max(PAD_L + rx + 6, Math.min(width - PAD_R - rx - 4, cx));
-    const noteRight = cx < width * 0.62;
-    const noteX = noteRight ? Math.min(width - PAD_R - 250, cx + rx + 28) : Math.max(PAD_L + 8, cx - rx - 278);
-    const noteY = Math.max(PAD_T + 2, Math.min(cy - ry - 8, (height - PAD_B) * 0.55));
-    return {
-      ellipse: penEllipse(cx, cy, rx, ry, focusFlag.id),
-      leader: penLeader(noteRight ? noteX - 4 : noteX + 252, noteY + 18, noteRight ? cx + rx * 0.7 : cx - rx * 0.7, cy - ry * 0.5, focusFlag.id + "l"),
-      noteX, noteY, flag: focusFlag,
-    };
-  }, [focusFlag, x, y, width, height, analysis, duration]);
+    const x1 = x(focusFlag.start);
+    const x2 = Math.max(x1 + 6, x(Math.min(duration, Math.max(focusFlag.end, focusFlag.start + duration * 0.015))));
+    const endT = Math.min(duration, focusFlag.end);
+    const dotX = x(endT);
+    const dotY = y(retentionAt(analysis.curve.bins, duration, endT).r);
+    const plotMid = (PAD_T + y(0)) / 2;
+    // Put the callout in the empty side of the curve: under it when the drop sits high, over it when low.
+    const below = dotY < plotMid;
+    const noteY = Math.max(PAD_T + 10, Math.min(y(0) - NOTE_H - 4, below ? dotY + 26 : dotY - 26 - NOTE_H));
+    const right = dotX < width * 0.62;
+    const noteX = right ? Math.min(width - PAD_R - NOTE_W, dotX + 24) : Math.max(PAD_L + 4, dotX - 24 - NOTE_W);
+    const anchorX = right ? noteX : noteX + NOTE_W;
+    const anchorY = below ? noteY : noteY + NOTE_H;
+    return { x1, x2, dotX, dotY, noteX, noteY, anchorX, anchorY, flag: focusFlag };
+  }, [focusFlag, x, y, width, analysis, duration]);
 
-  // Signature motion: the pen circles the drop; the revision curve morphs out of the White draft.
+  // Motion: the bracket draws across the drop and the callout settles in; a revision morphs out of the White draft.
   useGSAP(
     () => {
-      const reduce = prefersReducedMotion();
-      if (!reduce) {
-        gsap.fromTo(".pen-ellipse", { drawSVG: "0%" }, { drawSVG: "100%", duration: 0.9, ease: "power2.inOut", delay: 0.35 });
-        gsap.fromTo(".pen-leader", { drawSVG: "0%" }, { drawSVG: "100%", duration: 0.4, ease: "power2.out", delay: 1.15 });
-        gsap.fromTo(".pen-note", { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.5, delay: 1.25 });
-      }
+      if (prefersReducedMotion()) return;
+      gsap.fromTo(".ann-bracket", { drawSVG: "0%" }, { drawSVG: "100%", duration: 0.55, ease: "power2.out", delay: 0.2 });
+      gsap.fromTo(".ann-span", { opacity: 0 }, { opacity: 1, duration: 0.4, delay: 0.15 });
+      gsap.fromTo(".ann-leader", { drawSVG: "0%" }, { drawSVG: "100%", duration: 0.35, ease: "power2.out", delay: 0.6 });
+      gsap.fromTo(".ann-note", { autoAlpha: 0, y: 4 }, { autoAlpha: 1, y: 0, duration: 0.4, delay: 0.7 });
     },
-    { scope: svgRef, dependencies: [pen?.flag.id, width > 0] },
+    { scope: svgRef, dependencies: [note?.flag.id, width > 0] },
   );
   useGSAP(
     () => {
@@ -128,7 +124,7 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
   const payoff = analysis.metrics.payoff_time;
 
   return (
-    <figure className="relative h-full min-h-[240px]" aria-labelledby="curve-title">
+    <figure className="relative h-full min-h-[220px]" aria-labelledby="curve-title">
       <figcaption className="sr-only" id="curve-title">
         Predicted retention: {pct(analysis.metrics.intro_retention)} still watching at 0:30, average {pct(analysis.metrics.apv)} viewed.
         The full curve is also available as a table below the chart.
@@ -149,7 +145,7 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
             onKeyDown={onKeyDown}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            className="block touch-none rounded-[4px] select-none focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            className="block touch-none rounded-chip select-none focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             onPointerMove={(e) => {
               const t = toTime(e.clientX);
               setHoverTime(t);
@@ -163,50 +159,64 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
             }}
             onPointerUp={() => setDragging(false)}
           >
-            {/* Intro window */}
-            <rect x={x(0)} y={PAD_T} width={Math.max(0, x(Math.min(30, duration)) - x(0))} height={y(0) - PAD_T} fill="var(--paper-sunk)" />
-            <text x={x(0) + 6} y={y(0) - 8} className="fill-ink-3 text-[11px]">Intro</text>
+            {/* Intro window (YouTube Studio's 0:30) */}
+            <rect x={x(0)} y={PAD_T} width={Math.max(0, x(Math.min(30, duration)) - x(0))} height={y(0) - PAD_T} fill="var(--surface-2)" />
+            <text x={x(0) + 6} y={y(0) - 7} className="tc fill-ink-3 text-[10.5px]">Intro</text>
 
             {/* Grid */}
             {[0.25, 0.5, 0.75, 1].map((v) => (
               <g key={v}>
-                <line x1={PAD_L} x2={width - PAD_R} y1={y(v)} y2={y(v)} stroke="var(--rule)" strokeWidth={1} />
-                <text x={PAD_L - 10} y={y(v) + 4} textAnchor="end" className="tnum fill-ink-3 text-[11px]">{v * 100}%</text>
+                <line x1={PAD_L} x2={width - PAD_R} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeWidth={1} strokeDasharray="2 3" />
+                <text x={PAD_L - 10} y={y(v) + 3.5} textAnchor="end" className="tc fill-ink-3 text-[10.5px]">{v * 100}%</text>
               </g>
             ))}
-            <line x1={PAD_L} x2={width - PAD_R} y1={y(0)} y2={y(0)} stroke="var(--rule-strong)" strokeWidth={1} />
+            <line x1={PAD_L} x2={width - PAD_R} y1={y(0)} y2={y(0)} stroke="var(--line-strong)" strokeWidth={1} />
             {minuteTicks(duration).map((t) => (
-              <text key={t} x={x(t)} y={y(0) + 18} textAnchor="middle" className="tnum fill-ink-3 text-[11px]">{fmtTime(t)}</text>
+              <text key={t} x={x(t)} y={y(0) + 18} textAnchor="middle" className="tc fill-ink-3 text-[10.5px]">{fmtTime(t)}</text>
             ))}
 
-            {/* Dips: a faint red wash under the curve where the model expects excess exits */}
+            {/* Dips: a faint wash where the model expects excess exits */}
             {dips.map((d, i) => (
-              <rect key={i} x={x(d.start)} y={PAD_T} width={Math.max(2, x(d.end) - x(d.start))} height={y(0) - PAD_T} fill="var(--pen-wash)" />
+              <rect key={i} x={x(d.start)} y={PAD_T} width={Math.max(2, x(d.end) - x(d.start))} height={y(0) - PAD_T} fill="var(--drop-wash)" />
             ))}
+
+            {/* Focused drop: shaded span and bracket */}
+            {note && (
+              <g aria-hidden>
+                <rect className="ann-span" x={note.x1} y={PAD_T} width={note.x2 - note.x1} height={y(0) - PAD_T} fill="var(--drop-wash-strong)" />
+                <path
+                  className="ann-bracket"
+                  d={`M${note.x1},${PAD_T + 6} V${PAD_T} H${note.x2} V${PAD_T + 6}`}
+                  fill="none"
+                  stroke="var(--drop)"
+                  strokeWidth={1.5}
+                  strokeLinejoin="round"
+                />
+              </g>
+            )}
 
             {/* Uncertainty band + White draft */}
-            <path d={base.band} fill="var(--ink)" opacity={0.055} />
-            <path d={base.line} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" opacity={after ? 0.45 : 1} />
+            <path d={base.band} fill="var(--ink)" opacity={0.07} />
+            <path d={base.line} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" opacity={after ? 0.4 : 1} />
 
             {/* Revision draft */}
             {after && rev && (
               <path className="draft-line" d={after.line} fill="none" stroke={rev.ink} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
             )}
 
-            {/* Key moments: spikes, the stretches the model expects to hold attention best (ink, never red) */}
+            {/* Spikes: the stretches the model expects to hold attention best (never red) */}
             {spikes.map((m, i) => {
               const t = (m.start + m.end) / 2;
-              // The red-pen note owns its stretch of the curve; spikes inside it would scribble over the pen.
-              if (pen && t >= pen.flag.start - duration * 0.06 && t <= pen.flag.end + duration * 0.06) return null;
+              // The drop callout owns its stretch of the curve; spikes inside it would collide with it.
+              if (note && t >= note.flag.start - duration * 0.06 && t <= note.flag.end + duration * 0.06) return null;
               const cy = y(retentionAt(analysis.curve.bins, duration, t).r);
               // Neighbouring spikes share one label so the words never collide.
               const crowded = spikes.slice(0, i).some((o) => Math.abs(x((o.start + o.end) / 2) - x(t)) < 48);
               return (
                 <g key={`spike-${i}`} transform={`translate(${x(t)},0)`} className="pointer-events-none" aria-hidden>
-                  <line y1={cy - 5} y2={cy - 19} stroke="var(--ink-2)" strokeWidth={1} />
-                  <path d={`M0,${cy - 27} l4.5,7 h-9 z`} fill="var(--ink-2)" />
-                  <circle cy={cy} r={3} fill="var(--paper)" stroke="var(--ink-2)" strokeWidth={1.5} />
-                  {!crowded && <text y={cy - 31} textAnchor="middle" className="fill-ink-2 text-[11px] font-[550]">Spike</text>}
+                  <path d={`M0,${cy - 8} l-4,-6 h8 z`} fill="var(--ink-2)" />
+                  <circle cy={cy} r={3} fill="var(--surface)" stroke="var(--ink-2)" strokeWidth={1.5} />
+                  {!crowded && <text y={cy - 19} textAnchor="middle" className="tc fill-ink-2 text-[10.5px]">Spike</text>}
                 </g>
               );
             })}
@@ -214,65 +224,76 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
             {/* Payoff marker */}
             {payoff != null && (
               <g transform={`translate(${x(payoff)},0)`}>
-                <line y1={PAD_T} y2={y(0)} stroke="var(--ink-3)" strokeWidth={1} strokeDasharray="0" opacity={0.35} />
-                <text y={PAD_T + 10} x={5} className="fill-ink-2 text-[11px] font-[550]">Payoff {fmtTime(payoff)}</text>
+                <line y1={PAD_T} y2={y(0)} stroke="var(--ink-3)" strokeWidth={1} strokeDasharray="3 3" opacity={0.6} />
+                <text y={PAD_T + 11} x={5} className="tc fill-ink-2 text-[10.5px] font-[500]">Payoff {fmtTime(payoff)}</text>
               </g>
             )}
 
-            {/* Red pen: biggest drop */}
-            {pen && (
-              <g aria-hidden>
-                <path className="pen-ellipse" d={pen.ellipse} fill="none" stroke="var(--pen)" strokeWidth={2.4} strokeLinecap="round" />
-                <path className="pen-leader" d={pen.leader} fill="none" stroke="var(--pen)" strokeWidth={1.6} strokeLinecap="round" />
-                <foreignObject className="pen-note" x={pen.noteX} y={pen.noteY} width={250} height={84}>
+            {/* Focused drop: end marker, leader and callout */}
+            {note && (
+              <g>
+                <line
+                  className="ann-leader"
+                  x1={note.dotX}
+                  y1={note.dotY}
+                  x2={note.anchorX}
+                  y2={note.anchorY}
+                  stroke="var(--drop)"
+                  strokeWidth={1}
+                  aria-hidden
+                />
+                <circle cx={note.dotX} cy={note.dotY} r={4.5} fill="var(--surface)" stroke="var(--drop)" strokeWidth={2} aria-hidden />
+                <foreignObject className="ann-note" x={note.noteX} y={note.noteY} width={NOTE_W} height={NOTE_H + 16}>
                   <button
                     type="button"
-                    onClick={() => selectFlag(pen.flag.id)}
-                    className="block w-full cursor-pointer rounded-[5px] bg-paper/90 px-1 text-left text-pen-text"
+                    onClick={() => selectFlag(note.flag.id)}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="block w-full cursor-pointer rounded-control border border-drop/35 bg-surface px-2.5 py-1.5 text-left shadow-raised transition-colors duration-150 hover:border-drop/70"
                   >
-                    <span className="block text-[15px] leading-[1.15] font-[620] wdth-condensed">{pen.flag.title}</span>
-                    <span className="mt-1 block text-[12.5px] leading-snug text-ink-2">
-                      ≈ <span className="tnum font-[620] text-pen-text">{Math.round(pen.flag.viewers_lost)}</span> of every 1,000 viewers gone by {fmtTime(pen.flag.end)}
+                    <span className="line-clamp-2 block text-[13px] leading-[1.25] font-[600] text-drop-text">{note.flag.title}</span>
+                    <span className="mt-0.5 block text-[12px] leading-snug text-ink-2">
+                      ≈ <span className="tnum font-[600] text-drop-text">{Math.round(note.flag.viewers_lost)}</span> of every 1,000 gone by{" "}
+                      <span className="tc">{fmtTime(note.flag.end)}</span>
                     </span>
                   </button>
                 </foreignObject>
               </g>
             )}
 
-            {/* Playhead: a brass brad on a hairline */}
+            {/* Playhead */}
             {(playhead > 0 || focused) && (
               <g transform={`translate(${x(Math.min(playhead, duration))},0)`} className="pointer-events-none">
-                <line y1={PAD_T - 4} y2={y(0)} stroke="var(--brass)" strokeWidth={1.5} />
-                <circle cy={PAD_T - 6} r={5} fill="var(--brass)" stroke="var(--paper)" strokeWidth={2} />
+                <line y1={PAD_T - 2} y2={y(0)} stroke="var(--accent)" strokeWidth={1.5} />
+                <rect x={-4.5} y={PAD_T - 10} width={9} height={9} rx={2} fill="var(--accent)" />
               </g>
             )}
 
-            {/* Crosshair + readout */}
+            {/* Crosshair */}
             {hover && probeTime != null && (
               <g className="pointer-events-none">
-                <line x1={x(probeTime)} x2={x(probeTime)} y1={PAD_T} y2={y(0)} stroke="var(--ink)" strokeWidth={1} opacity={0.35} />
-                <circle cx={x(probeTime)} cy={y(hover.r)} r={4.5} fill="var(--ink)" stroke="var(--paper)" strokeWidth={2} />
-                {hoverAfter && rev && <circle cx={x(probeTime)} cy={y(hoverAfter.r)} r={4.5} fill={rev.ink} stroke="var(--paper)" strokeWidth={2} />}
+                <line x1={x(probeTime)} x2={x(probeTime)} y1={PAD_T} y2={y(0)} stroke="var(--ink)" strokeWidth={1} opacity={0.3} />
+                <circle cx={x(probeTime)} cy={y(hover.r)} r={4.5} fill="var(--ink)" stroke="var(--surface)" strokeWidth={2} />
+                {hoverAfter && rev && <circle cx={x(probeTime)} cy={y(hoverAfter.r)} r={4.5} fill={rev.ink} stroke="var(--surface)" strokeWidth={2} />}
               </g>
             )}
           </svg>
         )}
         {hover && probeTime != null && width > 0 && (
           <div
-            className="pointer-events-none absolute z-10 min-w-[168px] rounded-[7px] border border-rule bg-paper-raised px-3 py-2 shadow-[0_6px_20px_-6px_rgb(23_23_26/0.25)]"
+            className="pointer-events-none absolute z-10 min-w-[168px] rounded-control border border-line bg-surface px-3 py-2 shadow-overlay"
             style={{ left: Math.min(width - 190, x(probeTime) + 12), top: 8 }}
           >
-            <div className="tnum text-[12px] text-ink-3">{fmtTime(probeTime)}</div>
+            <div className="tc text-[11.5px] text-ink-3">{fmtTime(probeTime)}</div>
             <div className="mt-1 flex items-baseline gap-2">
               <span className="inline-block h-[2px] w-3 translate-y-[-3px] bg-ink" />
-              <span className="tnum text-[17px] font-[640]">{pct(hover.r)}</span>
+              <span className="tnum text-[17px] font-[600] tracking-[-0.01em]">{pct(hover.r)}</span>
               <span className="text-[12px] text-ink-3">still watching</span>
             </div>
             <div className="tnum text-[11.5px] text-ink-3">likely {pct(hover.lo)}–{pct(hover.hi)}</div>
             {hoverAfter && rev && (
               <div className="mt-1 flex items-baseline gap-2">
                 <span className="inline-block h-[2px] w-3 translate-y-[-3px]" style={{ background: rev.ink }} />
-                <span className="tnum text-[17px] font-[640]">{pct(hoverAfter.r)}</span>
+                <span className="tnum text-[17px] font-[600] tracking-[-0.01em]">{pct(hoverAfter.r)}</span>
                 <span className="text-[12px] text-ink-3">{rev.name} draft</span>
               </div>
             )}

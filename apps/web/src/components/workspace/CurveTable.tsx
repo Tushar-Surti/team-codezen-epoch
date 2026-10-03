@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { ChevronRight } from "lucide-react";
 
 import type { Analysis, Simulation } from "@/lib/contract.gen";
 import { fmtTime, pct } from "@/lib/format";
@@ -30,19 +31,19 @@ export function CurveTable({ analysis, sim, draftKey }: { analysis: Analysis; si
   const activeRow = Math.min(bins.length - 1, Math.floor((playhead / Math.max(1, duration)) * bins.length));
 
   return (
-    <details className="group mt-2 text-[13px]">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-[4px] text-[12.5px] font-[580] text-ink-2 hover:text-ink">
-        <span aria-hidden className="inline-block transition-transform duration-200 group-open:rotate-90">›</span>
+    <details className="group mt-3 border-t border-line pt-2.5 text-[13px]">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-chip text-[12.5px] font-[500] text-ink-2 hover:text-ink [&::-webkit-details-marker]:hidden">
+        <ChevronRight size={14} aria-hidden className="transition-transform duration-200 group-open:rotate-90" />
         Curve as a table
       </summary>
       <div className="mt-3 grid gap-6 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
         <section aria-label="Key moments">
-          <h3 className="mb-1.5 text-[12.5px] font-[620] text-ink-2">Key moments</h3>
+          <h3 className="eyebrow mb-2">Key moments</h3>
           <ul className="space-y-1.5 text-ink-2">
             {moments.map((m, i) => (
-              <li key={i} className="tnum">
+              <li key={i}>
                 <button type="button" onClick={() => setPlayhead(m.start)} className="text-left hover:underline">
-                  <span className="font-[600] text-ink">{MOMENT_LABEL[m.kind]}</span> {fmtTime(m.start)}–{fmtTime(m.end)}
+                  <span className="font-[600] text-ink">{MOMENT_LABEL[m.kind]}</span> <span className="tc">{fmtTime(m.start)}–{fmtTime(m.end)}</span>
                 </button>
                 <span className="block text-[12px] text-ink-3">
                   {m.kind === "intro" && `${m.magnitude.toFixed(0)}% of starters gone by ${fmtTime(m.end)}`}
@@ -53,18 +54,18 @@ export function CurveTable({ analysis, sim, draftKey }: { analysis: Analysis; si
             ))}
           </ul>
         </section>
-        <div className="max-h-[340px] overflow-y-auto rounded-[4px] border border-rule">
+        <div className="max-h-[300px] overflow-y-auto rounded-control border border-line">
           <table className="w-full border-collapse text-left">
             <caption className="sr-only">
               Predicted share of starters still watching at the end of each 1% of the video{rev ? `, White draft and ${rev.name} draft` : ""}.
             </caption>
-            <thead className="sticky top-0 bg-paper-raised text-[12px] text-ink-3 shadow-[0_1px_0_var(--rule)]">
+            <thead className="sticky top-0 bg-surface-2 text-[11.5px] text-ink-3 shadow-[0_1px_0_var(--line)]">
               <tr>
-                <th scope="col" className="px-3 py-1.5 font-[560]">Time</th>
-                <th scope="col" className="px-3 py-1.5 text-right font-[560]">Still watching</th>
-                <th scope="col" className="px-3 py-1.5 text-right font-[560]">Likely range</th>
-                {rev && <th scope="col" className="px-3 py-1.5 text-right font-[560]" style={{ color: rev.ink }}>{rev.name}</th>}
-                <th scope="col" className="px-3 py-1.5 font-[560]">Note</th>
+                <th scope="col" className="px-3 py-1.5 font-[500]">Time</th>
+                <th scope="col" className="px-3 py-1.5 text-right font-[500]">Still watching</th>
+                <th scope="col" className="px-3 py-1.5 text-right font-[500]">Likely range</th>
+                {rev && <th scope="col" className="px-3 py-1.5 text-right font-[500]" style={{ color: rev.ink }}>{rev.name}</th>}
+                <th scope="col" className="px-3 py-1.5 font-[500]">Note</th>
               </tr>
             </thead>
             <tbody className="tnum">
@@ -72,13 +73,13 @@ export function CurveTable({ analysis, sim, draftKey }: { analysis: Analysis; si
                 <tr
                   key={r.i}
                   onClick={() => setPlayhead(r.startT)}
-                  className={clsx("cursor-pointer border-b border-rule last:border-b-0 hover:bg-paper-sunk/60", r.i === activeRow && playhead > 0 && "bg-paper-sunk")}
+                  className={clsx("cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2/60", r.i === activeRow && playhead > 0 && "bg-accent-wash")}
                 >
-                  <th scope="row" className="px-3 py-1 font-[450] text-ink-2">{fmtTime(r.t)}</th>
+                  <th scope="row" className="tc px-3 py-1 font-[400] text-ink-2">{fmtTime(r.t)}</th>
                   <td className="px-3 py-1 text-right">{pct(r.b.retention, 1)}</td>
                   <td className="px-3 py-1 text-right text-ink-3">{pct(r.b.lo)}–{pct(r.b.hi)}</td>
                   {rev && <td className="px-3 py-1 text-right" style={{ color: rev.ink }}>{r.after != null ? pct(r.after, 1) : ""}</td>}
-                  <td className={clsx("px-3 py-1 text-[12px]", r.notes.some((n) => n !== "Spike") ? "text-pen-text" : "text-ink-3")}>
+                  <td className={clsx("px-3 py-1 text-[12px]", r.notes.some((n) => n !== "Spike") ? "text-drop-text" : "text-ink-3")}>
                     {r.notes.join(" · ")}
                   </td>
                 </tr>

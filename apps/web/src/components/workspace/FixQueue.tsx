@@ -1,9 +1,10 @@
 "use client";
 
 import clsx from "clsx";
-import { Check, CornerDownRight, Loader2, Plus } from "lucide-react";
+import { Check, CornerDownRight, Plus } from "lucide-react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 
+import { Badge, Button, Spinner } from "@/components/ui";
 import type { Analysis, EditOp, Fix, Flag, Provenance } from "@/lib/contract.gen";
 import { fmtTime } from "@/lib/format";
 import { REVISIONS, SEVERITY_COLOR, revision } from "@/lib/revisions";
@@ -18,7 +19,7 @@ function SeverityMark({ level }: { level: number }) {
         <span
           key={i}
           className="w-[4px] rounded-t-[1.5px]"
-          style={{ height: 4 + i * 2.6, background: i <= level ? SEVERITY_COLOR[level] : "var(--rule)" }}
+          style={{ height: 4 + i * 2.6, background: i <= level ? SEVERITY_COLOR[level] : "var(--line-strong)" }}
         />
       ))}
     </span>
@@ -28,9 +29,9 @@ function SeverityMark({ level }: { level: number }) {
 function ProvenanceBadge({ p }: { p: Provenance }) {
   const label = p.provider === "rules" ? "Rules engine" : p.provider === "claude" ? "Claude" : p.provider === "groq" ? "Groq" : "Local model";
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-rule px-2 py-[1px] text-[11px] text-ink-3" title={`${p.model}${p.prompt_version ? ` · prompt ${p.prompt_version}` : ""}`}>
-      <span className="size-1.5 rounded-full bg-ink-3" /> {label}
-    </span>
+    <Badge tone={p.provider === "rules" ? "neutral" : "ai"} className="h-5 text-[11px]" title={`${p.model}${p.prompt_version ? ` · prompt ${p.prompt_version}` : ""}`}>
+      {p.provider === "rules" ? label : `Written by ${label}`}
+    </Badge>
   );
 }
 
@@ -64,7 +65,9 @@ function OpLine({ op, analysis }: { op: EditOp; analysis: Analysis }) {
       <CornerDownRight size={14} className="mt-[3px] shrink-0 text-ink-3" aria-hidden />
       <span>
         {verb[op.op]}
-        {op.new_text && <span className="mt-1 block font-script text-[13.5px] leading-snug text-ink">“{op.new_text}”</span>}
+        {op.new_text && (
+          <span className="mt-1 block rounded-chip bg-accent-wash px-2 py-1 font-script text-[13px] leading-snug text-ink">“{op.new_text}”</span>
+        )}
         {!op.new_text && op.note && <span className="mt-0.5 block text-[12.5px] text-ink-3">{op.note}</span>}
       </span>
     </li>
@@ -80,11 +83,11 @@ function Inspector({ flag, fix, analysis }: { flag: Flag; fix: Fix | undefined; 
       transition={{ duration: 0.32, ease: EASE }}
       className="overflow-hidden"
     >
-      <div className="space-y-4 pt-3">
+      <div className="flex flex-col gap-4 pt-3">
         <section>
-          <h4 className="mb-1.5 text-[12.5px] font-[620] text-ink-2">Evidence · {fmtTime(flag.evidence.start)}–{fmtTime(flag.evidence.end)}</h4>
+          <h4 className="eyebrow mb-2">Evidence · {fmtTime(flag.evidence.start)}–{fmtTime(flag.evidence.end)}</h4>
           <blockquote className="relative pl-3 font-script text-[13.5px] leading-[1.55] text-ink">
-            <span aria-hidden className="absolute top-1 bottom-1 left-0 w-[2px] rounded-full bg-pen" />
+            <span aria-hidden className="absolute top-1 bottom-1 left-0 w-[2px] rounded-full bg-drop" />
             {flag.evidence.quote}
           </blockquote>
           {flag.evidence.related_quote && flag.evidence.related_start != null && (
@@ -97,7 +100,7 @@ function Inspector({ flag, fix, analysis }: { flag: Flag; fix: Fix | undefined; 
         </section>
         {flag.signals.length > 0 && (
           <section>
-            <h4 className="mb-2 text-[12.5px] font-[620] text-ink-2">Why the model flags it</h4>
+            <h4 className="eyebrow mb-2">Why the model flags it</h4>
             <ul className="space-y-1.5">
               {flag.signals.map((s) => (
                 <li key={s.family + s.label} className="grid grid-cols-[1fr_auto] items-center gap-x-3 text-[13px]">
@@ -106,7 +109,7 @@ function Inspector({ flag, fix, analysis }: { flag: Flag; fix: Fix | undefined; 
                     {s.value && <span className="tnum ml-1.5 text-ink-3">{s.value}</span>}
                   </span>
                   <span className="tnum text-[12px] text-ink-3">{Math.round(s.share * 100)}%</span>
-                  <span className="col-span-2 mt-0.5 h-[4px] rounded-full bg-paper-sunk">
+                  <span className="col-span-2 mt-0.5 h-[3px] rounded-full bg-surface-2">
                     <span className="block h-full rounded-full bg-ink-2" style={{ width: `${Math.max(4, s.share * 100)}%` }} />
                   </span>
                 </li>
@@ -116,20 +119,20 @@ function Inspector({ flag, fix, analysis }: { flag: Flag; fix: Fix | undefined; 
         )}
         {flag.norm && (
           <p className="text-[13px] text-ink-2">
-            {flag.norm.label} <span className="font-[620] text-ink">{flag.norm.value}</span>
+            {flag.norm.label} <span className="font-[600] text-ink">{flag.norm.value}</span>
             <span className="text-ink-3"> · {flag.norm.n} videos</span>
           </p>
         )}
         {fix && (
           <section>
-            <h4 className="mb-1.5 text-[12.5px] font-[620] text-ink-2">The fix</h4>
+            <h4 className="eyebrow mb-2">The fix</h4>
             <p className="mb-2 text-[13px] text-ink-2">{fix.rationale}</p>
-            <ul className="space-y-2">{fix.ops.map((op, i) => <OpLine key={i} op={op} analysis={analysis} />)}</ul>
+            <ul className="flex flex-col gap-2">{fix.ops.map((op, i) => <OpLine key={i} op={op} analysis={analysis} />)}</ul>
           </section>
         )}
         <div className="flex items-center justify-between pb-1">
           <ProvenanceBadge p={fix?.provenance ?? flag.provenance} />
-          <span className="tnum text-[11.5px] text-ink-3">confidence {Math.round(flag.confidence * 100)}%</span>
+          <span className="tnum text-[11.5px] text-ink-3">Confidence {Math.round(flag.confidence * 100)}%</span>
         </div>
       </div>
     </motion.div>
@@ -145,8 +148,8 @@ export function FixQueue({ analysis }: { analysis: Analysis }) {
 
   if (!analysis.flags.length) {
     return (
-      <div className="rounded-[6px] border border-rule bg-paper-raised p-5 text-[14px] text-ink-2">
-        <p className="font-[600] text-ink">No drop risks above the noise.</p>
+      <div className="rounded-panel border border-line bg-surface p-5 text-[13.5px] text-ink-2">
+        <p className="font-[600] text-ink">No drop risks above the noise</p>
         <p className="mt-1">The script holds attention evenly. Check the curve for the intro, then tighten wherever pace dips.</p>
       </div>
     );
@@ -154,7 +157,7 @@ export function FixQueue({ analysis }: { analysis: Analysis }) {
 
   return (
     <LayoutGroup>
-      <ol className="space-y-2.5">
+      <ol className="flex flex-col gap-2">
         {analysis.flags.map((flag, idx) => {
           const fix = fixesByFlag.get(flag.id);
           const selected = selectedFlagId === flag.id;
@@ -166,10 +169,10 @@ export function FixQueue({ analysis }: { analysis: Analysis }) {
               transition={{ duration: 0.32, ease: EASE }}
               key={flag.id}
               className={clsx(
-                "rounded-[7px] border bg-paper-raised px-4 py-3 transition-[border-color,box-shadow] duration-200",
-                selected ? "border-ink/40 shadow-[0_8px_26px_-14px_rgb(23_23_26/0.35)]" : "border-rule hover:border-rule-strong",
+                "rounded-panel border bg-surface px-3.5 py-3 transition-[border-color,box-shadow] duration-200",
+                selected ? "border-accent/60 shadow-[0_0_0_3px_var(--accent-wash)]" : "border-line hover:border-line-strong",
               )}
-              style={applied ? { background: `color-mix(in oklab, ${target.paper} 55%, var(--paper-raised))` } : undefined}
+              style={applied ? { background: `color-mix(in oklab, ${target.paper} 70%, var(--surface))` } : undefined}
             >
               <button
                 type="button"
@@ -178,42 +181,42 @@ export function FixQueue({ analysis }: { analysis: Analysis }) {
                   selectFlag(selected ? null : flag.id);
                   setPlayhead(flag.start);
                 }}
-                className="flex w-full items-start gap-3 text-left"
+                className="flex w-full items-start gap-3 rounded-chip text-left"
               >
                 <SeverityMark level={flag.severity} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] leading-[1.25] font-[620] text-ink">
-                    {idx === 0 && flag.viewers_lost >= 5 && <span className="mr-1.5 text-pen-text">Biggest drop.</span>}
-                    {flag.title}
-                  </span>
+                  {idx === 0 && flag.viewers_lost >= 5 && (
+                    <Badge tone="risk" className="mb-1.5 h-5 text-[11px]">
+                      Biggest drop
+                    </Badge>
+                  )}
+                  <span className="block text-[14.5px] leading-[1.3] font-[600] text-ink">{flag.title}</span>
                   <span className={clsx("mt-1 block text-[13px] leading-snug text-ink-2", !selected && "line-clamp-2")}>{flag.detail}</span>
                 </span>
                 <span className="tnum shrink-0 text-right">
-                  <span className="block text-[17px] leading-none font-[640] text-pen-text">{Math.round(flag.viewers_lost)}</span>
-                  <span className="block text-[10.5px] text-ink-3">per 1,000</span>
+                  <span className="block text-[18px] leading-none font-[600] tracking-[-0.02em] text-drop-text">{Math.round(flag.viewers_lost)}</span>
+                  <span className="mt-0.5 block text-[10.5px] text-ink-3">per 1,000</span>
                 </span>
               </button>
 
               <AnimatePresence initial={false}>{selected && <Inspector flag={flag} fix={fix} analysis={analysis} />}</AnimatePresence>
 
               {fix && (
-                <div className="mt-3 flex items-center gap-3 border-t border-rule pt-2.5">
+                <div className="mt-3 flex items-center gap-3 border-t border-line pt-2.5">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13.5px] font-[580] text-ink">{fix.title}</span>
-                    <span className={clsx("tnum block text-[12px]", gain?.good ? "text-ink-2" : "text-ink-3")}>{gain?.text}</span>
+                    <span className="block truncate text-[13px] font-[500] text-ink">{fix.title}</span>
+                    <span className={clsx("tnum block text-[12px]", gain?.good ? "text-good" : "text-ink-3")}>{gain?.text}</span>
                   </span>
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant={applied ? "secondary" : "primary"}
                     onClick={() => toggleFix(fix.id)}
                     aria-pressed={applied}
-                    className={clsx(
-                      "inline-flex shrink-0 items-center gap-1.5 rounded-[6px] px-3 py-1.5 text-[13px] font-[600] transition-[background,color,box-shadow] duration-200",
-                      applied ? "bg-paper text-ink ring-1 ring-ink/25 hover:ring-ink/45" : "bg-ink text-paper hover:bg-primary-hover",
-                    )}
+                    title={applied ? `Remove from the ${target.name} draft` : undefined}
                   >
-                    {applied ? <Check size={15} aria-hidden /> : <Plus size={15} aria-hidden />}
+                    {applied ? <Check size={14} aria-hidden /> : <Plus size={14} aria-hidden />}
                     {applied ? `In ${target.name}` : `Apply to ${target.name}`}
-                  </button>
+                  </Button>
                 </div>
               )}
             </motion.li>
@@ -221,8 +224,8 @@ export function FixQueue({ analysis }: { analysis: Analysis }) {
         })}
       </ol>
       {working?.status === "simulating" && (
-        <p className="mt-3 flex items-center gap-2 text-[12.5px] text-ink-3">
-          <Loader2 size={14} className="animate-spin" aria-hidden /> Re-simulating the {target.name} draft…
+        <p className="mt-3 flex items-center gap-2 text-[12.5px] text-ink-3" role="status">
+          <Spinner className="text-accent" /> Re-simulating the {target.name} draft…
         </p>
       )}
     </LayoutGroup>

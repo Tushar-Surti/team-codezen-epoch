@@ -23,16 +23,16 @@ export function YouTubeCheck({ analysis, actual }: { analysis: Analysis; actual:
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 pb-2">
         <p className="flex items-center gap-5 text-[12px] text-ink-3">
-          <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 bg-ink" />Predicted interest, from the transcript</span>
+          <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 rounded-full bg-ink" />Predicted interest, from the transcript</span>
           <span className={`flex items-center gap-1.5 transition-opacity duration-500 ${revealed ? "" : "opacity-30"}`}>
-            <span className="h-[2px] w-4" style={{ background: "var(--actual)" }} />YouTube “Most replayed”
+            <span className="h-[2px] w-4 rounded-full bg-actual" />YouTube “Most replayed”
           </span>
         </p>
         {!revealed ? (
           <button
+            type="button"
             onClick={() => setRevealed(true)}
-            className="inline-flex items-center gap-2 rounded-[7px] px-3 py-1.5 text-[13px] font-[620] text-paper hover:brightness-110"
-            style={{ background: "var(--actual)" }}
+            className="inline-flex h-(--h-control-sm) items-center gap-1.5 rounded-control bg-actual px-3 text-[12.5px] text-primary-fg [font-weight:var(--fw-control)] transition-[filter] duration-150 hover:brightness-110"
           >
             <Eye size={14} aria-hidden /> Reveal YouTube’s curve
           </button>
@@ -43,9 +43,9 @@ export function YouTubeCheck({ analysis, actual }: { analysis: Analysis; actual:
             transition={{ delay: 1.4, duration: 0.4 }}
             className="tnum flex gap-4 text-[13px] text-ink-2"
           >
-            <span>Shape match <strong className="font-[650] text-ink">{score.rho >= 0 ? "+" : "−"}{Math.abs(score.rho).toFixed(2)}</strong></span>
-            <span>Peaks <strong className="font-[650] text-ink">{Math.round(score.peaks * 10)}/10</strong></span>
-            <span>Quiet stretches <strong className="font-[650] text-ink">{Math.round(score.dips * 10)}/10</strong></span>
+            <span>Shape match <strong className="font-[600] text-ink">{score.rho >= 0 ? "+" : "−"}{Math.abs(score.rho).toFixed(2)}</strong></span>
+            <span>Peaks <strong className="font-[600] text-ink">{Math.round(score.peaks * 10)}/10</strong></span>
+            <span>Quiet stretches <strong className="font-[600] text-ink">{Math.round(score.dips * 10)}/10</strong></span>
           </motion.p>
         )}
       </div>

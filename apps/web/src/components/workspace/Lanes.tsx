@@ -16,7 +16,7 @@ const LANE_H = 30;
 
 function LaneLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="pointer-events-none absolute top-0 left-0 flex h-full w-[48px] items-center text-[11px] leading-tight text-ink-3 wdth-condensed">
+    <span className="pointer-events-none absolute top-0 left-0 flex h-full w-[46px] items-center text-[10.5px] leading-[1.15] text-ink-3">
       {children}
     </span>
   );
@@ -51,7 +51,7 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
   return (
     <div ref={ref} className="relative select-none" role="group" aria-label="Timeline lanes">
       {width > 0 && (
-        <div className="flex flex-col divide-y divide-rule border-y border-rule">
+        <div className="flex flex-col divide-y divide-line border-y border-line">
           {/* Drop risks */}
           <div
             className="relative"
@@ -87,13 +87,13 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
                     selectFlag(active ? null : f.id);
                     setPlayhead(f.start);
                   }}
-                  className="group absolute bottom-[6px] cursor-pointer"
+                  className="group absolute bottom-[6px] cursor-pointer rounded-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   style={{ left: x(f.start), width: Math.max(10, x(f.end) - x(f.start)), height: LANE_H - 2 }}
                 >
                   <span
                     className={clsx(
-                      "absolute bottom-0 left-0 w-full rounded-t-[3px] transition-[outline,transform] duration-200",
-                      active ? "outline-2 outline-offset-2 outline-ink" : "group-hover:-translate-y-0.5",
+                      "absolute bottom-0 left-0 w-full rounded-t-[2px] transition-[outline,transform] duration-200",
+                      active ? "outline-2 outline-offset-2 outline-accent" : "group-hover:-translate-y-0.5",
                     )}
                     style={{ height: h, background: SEVERITY_COLOR[f.severity] }}
                   />
@@ -115,21 +115,21 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
                     width: Math.max(0, x(promise.paid_off ?? duration) - x(0)),
                     background:
                       promise.status === "paid"
-                        ? "var(--rule-strong)"
-                        : `linear-gradient(90deg, var(--rule-strong), var(--pen))`,
+                        ? "var(--line-strong)"
+                        : `linear-gradient(90deg, var(--line-strong), var(--drop))`,
                   }}
                 />
                 {promise.first_touch != null && (
-                  <span className="absolute top-1/2 size-[9px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-paper bg-ink-2" style={{ left: x(promise.first_touch) }} title={`First touched at ${fmtTime(promise.first_touch)}`} />
+                  <span className="absolute top-1/2 size-[9px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-ink-2" style={{ left: x(promise.first_touch) }} title={`First touched at ${fmtTime(promise.first_touch)}`} />
                 )}
                 {promise.paid_off != null && (
                   <>
                     <span
-                      className="absolute top-1/2 size-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-paper bg-ink"
+                      className="absolute top-1/2 size-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-ink"
                       style={{ left: x(promise.paid_off) }}
                     />
                     <span
-                      className="absolute top-1/2 -translate-y-1/2 rounded-[3px] bg-paper px-1 text-[11px] font-[560] whitespace-nowrap text-ink-2"
+                      className="absolute top-1/2 -translate-y-1/2 tc rounded-chip bg-surface px-1 text-[10.5px] font-[500] whitespace-nowrap text-ink-2"
                       style={
                         x(promise.paid_off) > width - 120
                           ? { right: width - x(promise.paid_off) + 10 }
@@ -158,7 +158,7 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
                       key={l.id}
                       d={`M${x1},${LANE_H - 4} C${x1},${2} ${x2},${2} ${x2},${LANE_H - 4}`}
                       fill="none"
-                      stroke={open ? "var(--pen)" : "var(--ink-2)"}
+                      stroke={open ? "var(--drop)" : "var(--ink-2)"}
                       strokeWidth={1.5}
                       strokeDasharray={open ? "3 4" : undefined}
                     />
@@ -175,7 +175,7 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
               {sections.map((s, i) => (
                 <span
                   key={s.id}
-                  className={clsx("absolute top-1 bottom-1 truncate rounded-[3px] px-1.5 text-[11px] leading-[18px] text-ink-2", i % 2 ? "bg-paper-sunk" : "bg-paper-sunk/50")}
+                  className={clsx("absolute top-1 bottom-1 truncate rounded-chip px-1.5 text-[11px] leading-[18px] text-ink-2", i % 2 ? "bg-surface-2" : "bg-surface-2/50")}
                   style={{ left: x(s.start) + 1, width: Math.max(2, x(s.end) - x(s.start) - 2) }}
                   title={s.title}
                 >
@@ -207,7 +207,7 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
                   v > 0 ? (
                     <rect key={i} x={x((i / silence.values.length) * duration)} y={4}
                       width={Math.max(2, x(((i + 1) / silence.values.length) * duration) - x((i / silence.values.length) * duration))}
-                      height={LANE_H - 16} rx={2} fill="var(--pen)" opacity={Math.min(0.85, 0.2 + v / 100)} />
+                      height={LANE_H - 16} rx={2} fill="var(--drop)" opacity={Math.min(0.85, 0.2 + v / 100)} />
                   ) : null,
                 )}
               </svg>
@@ -229,7 +229,7 @@ export function Lanes({ analysis }: { analysis: Analysis }) {
       {width > 0 && playhead > 0 && (
         <span
           aria-hidden
-          className="pointer-events-none absolute top-0 bottom-0 w-[1.5px] bg-brass"
+          className="pointer-events-none absolute top-0 bottom-0 w-[1.5px] bg-accent"
           style={{ left: x(Math.min(playhead, duration)) }}
         />
       )}
