@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 
 import { InterestChart } from "@/components/lab/InterestChart";
+import { WhyDiffer } from "@/components/trust/WhyDiffer";
 import type { ActualCurve } from "@/lib/api";
 import type { Analysis } from "@/lib/contract.gen";
 import { overlap, resampleHeat, spearman } from "@/lib/score";
@@ -49,9 +50,19 @@ export function YouTubeCheck({ analysis, actual }: { analysis: Analysis; actual:
           </motion.p>
         )}
       </div>
-      <div className="min-h-0 flex-1">
+      <div className="min-h-[140px] flex-1">
         <InterestChart model={model} actual={heat} duration={analysis.metrics.duration_seconds} revealed={revealed} />
       </div>
+      {revealed && actual.explain && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.6, duration: 0.4 }}
+          className="mt-3 max-h-[40%] shrink-0 overflow-y-auto border-t border-line pt-3"
+        >
+          <WhyDiffer explain={actual.explain} compact />
+        </motion.div>
+      )}
     </div>
   );
 }

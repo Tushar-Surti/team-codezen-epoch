@@ -1,4 +1,4 @@
-/* Generated from packages/retent_core/schema/contract.schema.json. Do not edit; run `pnpm contract`. */
+/* Generated from packages/retent_core/schema/contract.schema.json. Do not edit; run pnpm contract. */
 
 export type SchemaVersion = "1";
 export type Id = string;
@@ -496,6 +496,40 @@ export type TrainedOn = number;
  * Id of the evaluation report backing it.
  */
 export type EvalReport = string | null;
+export type Level = "high" | "medium" | "low";
+export type Summary = string;
+/**
+ * The evidence in one plain sentence.
+ */
+export type EvidenceText = string | null;
+/**
+ * What lowers (or limits) confidence for this input.
+ */
+export type Reasons = string[];
+/**
+ * The held-out videos this one is compared with, e.g. "Tech · Hindi".
+ */
+export type Group = string;
+/**
+ * Held-out videos in the group, all from channels the model never trained on.
+ */
+export type Videos = number;
+/**
+ * Median rank correlation with YouTube's Most replayed curve.
+ */
+export type MedianSpearman = number;
+/**
+ * Share of those videos where the predicted shape matched at all (ρ > 0).
+ */
+export type SharePositive = number;
+/**
+ * Mean share of the 10 most-replayed moments found, within ±1% of the video.
+ */
+export type PeaksFound = number;
+/**
+ * Shown prominently when confidence is low.
+ */
+export type Disclaimer = string | null;
 export type Code = string;
 export type Message = string;
 export type Warnings = Warning_[];
@@ -562,6 +596,10 @@ export interface Analysis {
   redundancy: Redundancy | null;
   pacing: Pacing;
   model: ModelInfo;
+  /**
+   * Absent on analyses made before confidence existed.
+   */
+  confidence: Confidence1 | null;
   warnings: Warnings;
 }
 /**
@@ -819,6 +857,31 @@ export interface ModelInfo {
   version: Version;
   trained_on: TrainedOn;
   eval_report: EvalReport;
+}
+/**
+ * How much to trust the curve's shape, from held-out evidence (not the model grading itself).
+ *
+ * This interface was referenced by `RetentAIContract`'s JSON-Schema
+ * via the `definition` "Confidence".
+ */
+export interface Confidence1 {
+  level: Level;
+  summary: Summary;
+  evidence_text: EvidenceText;
+  reasons: Reasons;
+  evidence: ConfidenceEvidence | null;
+  disclaimer: Disclaimer;
+}
+/**
+ * This interface was referenced by `RetentAIContract`'s JSON-Schema
+ * via the `definition` "ConfidenceEvidence".
+ */
+export interface ConfidenceEvidence {
+  group: Group;
+  videos: Videos;
+  median_spearman: MedianSpearman;
+  share_positive: SharePositive;
+  peaks_found: PeaksFound;
 }
 /**
  * This interface was referenced by `RetentAIContract`'s JSON-Schema

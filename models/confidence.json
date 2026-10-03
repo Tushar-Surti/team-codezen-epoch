@@ -1,0 +1,49 @@
+{
+ "model": "lgbm-20261003-0338",
+ "created_at": "2026-10-03T03:38:28.209844+00:00",
+ "method": "GroupKFold by channel; per video: rank correlation with YouTube's Most replayed curve",
+ "overall": {
+  "videos": 338,
+  "median_spearman": 0.254,
+  "share_positive": 0.84,
+  "peaks_found": 0.313
+ },
+ "groups": {
+  "education/en": {
+   "videos": 56,
+   "median_spearman": 0.31,
+   "share_positive": 0.929,
+   "peaks_found": 0.334
+  },
+  "education/hi": {
+   "videos": 13,
+   "median_spearman": 0.418,
+   "share_positive": 0.923,
+   "peaks_found": 0.515
+  },
+  "tech/en": {
+   "videos": 150,
+   "median_spearman": 0.212,
+   "share_positive": 0.827,
+   "peaks_found": 0.291
+  },
+  "tech/hi": {
+   "videos": 45,
+   "median_spearman": 0.147,
+   "share_positive": 0.622,
+   "peaks_found": 0.233
+  },
+  "vlog/en": {
+   "videos": 24,
+   "median_spearman": 0.271,
+   "share_positive": 0.917,
+   "peaks_found": 0.367
+  },
+  "vlog/hi": {
+   "videos": 50,
+   "median_spearman": 0.364,
+   "share_positive": 0.92,
+   "peaks_found": 0.348
+  }
+ }
+}

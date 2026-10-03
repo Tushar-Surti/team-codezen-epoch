@@ -30,7 +30,8 @@ def build_schema() -> dict:
 
 def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(build_schema(), indent=2, ensure_ascii=False) + "\n")
+    # Explicit UTF-8: the platform default (cp1252 on Windows) fails on any non-ASCII description.
+    OUT.write_text(json.dumps(build_schema(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {OUT}")
 
 

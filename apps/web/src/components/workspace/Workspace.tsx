@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Rows3, ScrollText, Table2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { CONFIDENCE_LABEL, CONFIDENCE_TONE, ConfidenceCard } from "@/components/trust/ConfidenceCard";
 import { Badge, Button, Panel, Segmented, Spinner, Tabs } from "@/components/ui";
 import { api } from "@/lib/api";
 import { revision } from "@/lib/revisions";
@@ -118,6 +119,7 @@ export function Workspace({ id }: { id: string }) {
   const top = analysis.flags[0] && analysis.flags[0].viewers_lost >= 5 ? analysis.flags[0] : null;
   const focusFlag = analysis.flags.find((f) => f.id === selectedFlagId) ?? top;
   const uncalibrated = analysis.warnings.find((w) => w.code === "uncalibrated");
+  const confidence = analysis.confidence ?? null; // absent on analyses made before confidence existed
 
   return (
     <div className="flex h-full min-w-0 flex-col">
@@ -139,6 +141,11 @@ export function Workspace({ id }: { id: string }) {
                 <h2 id="curve-heading" className="panel-title">
                   {view === "youtube" ? "Blind check against YouTube" : "Predicted retention"}
                 </h2>
+                {confidence && view === "retention" && (
+                  <Badge tone={CONFIDENCE_TONE[confidence.level]} size="xs" title={confidence.summary}>
+                    {CONFIDENCE_LABEL[confidence.level]} confidence
+                  </Badge>
+                )}
                 {uncalibrated && view === "retention" && (
                   <Badge tone="warn" size="xs" title={uncalibrated.message}>
                     Uncalibrated
@@ -261,6 +268,18 @@ export function Workspace({ id }: { id: string }) {
           {analysis.meta.input_mode === "video" && (
             <div className="border-b border-line px-5 pt-4 pb-4">
               <RoughCutPlayer analysisId={analysis.id} />
+            </div>
+          )}
+          {confidence && (
+            <div className="border-b border-line px-5 pt-4 pb-4">
+              <ConfidenceCard
+                framed={false}
+                level={confidence.level}
+                summary={confidence.summary}
+                evidence={confidence.evidence_text}
+                reasons={confidence.reasons}
+                disclaimer={confidence.disclaimer}
+              />
             </div>
           )}
           <div className="border-b border-line px-5 pt-4 pb-3">

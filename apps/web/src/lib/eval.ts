@@ -13,6 +13,29 @@ export type EvalVideo = {
   text_kind: string;
   metrics: Record<"model" | "position" | "rules_v0" | "random", MethodMetrics> & { llm?: MethodMetrics };
   series?: { actual: number[]; model: number[]; position: number[]; llm?: number[] };
+  /** What the app would have said before the reveal: its group's held-out record, this video left out. */
+  confidence?: BlindConfidence;
+  explain?: Explanation;
+};
+
+export type ConfidenceLevel = "high" | "medium" | "low";
+
+export type BlindConfidence = {
+  level: ConfidenceLevel;
+  group: string;
+  videos: number;
+  median_spearman: number;
+  share_positive: number;
+  peaks_found: number;
+  evidence_text: string;
+};
+
+/** Why a prediction and YouTube's curve agree or differ (retent_core.trust.explain). */
+export type Explanation = {
+  spearman: number;
+  verdict: { level: "strong" | "partial" | "weak" | "miss"; label: string; text: string };
+  differences: { start: number; end: number; kind: "missed_peak" | "false_alarm"; title: string; said: string; reason: string }[];
+  agreements: { start: number; end: number; said: string }[];
 };
 
 export type EvalSummary = {
@@ -82,9 +105,13 @@ export const CELL_LABEL: Record<string, string> = {
   "vlog/hi": "Vlog · Hindi",
 };
 
-/** Min-max to 0..1 so a relative-interest prediction and YouTube's curve share one scale. */
+/** Scale a curve to 0..1 between its own 5th and 95th percentiles, so a prediction and YouTube's curve share
+ *  one scale. Min-max would let a single extreme bin (usually the opening, where everyone starts watching)
+ *  flatten the rest of the curve against the floor. Values past the percentiles are clipped to the edges. */
 export function unit(v: number[]): number[] {
-  const lo = Math.min(...v);
-  const hi = Math.max(...v);
-  return v.map((x) => (hi - lo ? (x - lo) / (hi - lo) : 0.5));
+  const s = [...v].sort((a, b) => a - b);
+  const at = (p: number) => s[Math.round(p * (s.length - 1))];
+  const lo = at(0.05);
+  const hi = at(0.95);
+  return v.map((x) => (hi - lo ? Math.min(1, Math.max(0, 0.04 + (0.92 * (x - lo)) / (hi - lo))) : 0.5));
 }

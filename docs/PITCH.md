@@ -1,5 +1,7 @@
 # Retent AI: pitch and demo kit
 
+> **Superseded by [PRESENTATION.md](PRESENTATION.md)**, which has the current numbers (338 videos, 64 channels), the full feature tour and the panel Q&A. The numbers below are from the earlier 61-video model.
+
 Numbers below are from the current evaluation (`models/eval_report.json`, run `lgbm-20261002-2217`). **After retraining on the friend's data, read the fresh numbers off `/lab` and update the lines marked ⟳.**
 
 ## One-liner

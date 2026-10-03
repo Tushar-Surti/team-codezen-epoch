@@ -316,6 +316,25 @@ class Warning_(_Model):
     message: str
 
 
+class ConfidenceEvidence(_Model):
+    group: str = Field(description='The held-out videos this one is compared with, e.g. "Tech · Hindi".')
+    videos: int = Field(ge=0, description="Held-out videos in the group, all from channels the model never trained on.")
+    median_spearman: float = Field(description="Median rank correlation with YouTube's Most replayed curve.")
+    share_positive: float = Field(ge=0, le=1, description="Share of those videos where the predicted shape matched at all (ρ > 0).")
+    peaks_found: float = Field(ge=0, le=1, description="Mean share of the 10 most-replayed moments found, within ±1% of the video.")
+
+
+class Confidence(_Model):
+    """How much to trust the curve's shape, from held-out evidence (not the model grading itself)."""
+
+    level: Literal["high", "medium", "low"]
+    summary: str
+    evidence_text: str | None = Field(default=None, description="The evidence in one plain sentence.")
+    reasons: list[str] = Field(default=[], description="What lowers (or limits) confidence for this input.")
+    evidence: ConfidenceEvidence | None = None
+    disclaimer: str | None = Field(default=None, description="Shown prominently when confidence is low.")
+
+
 class Analysis(_Model):
     schema_version: Literal["1"] = SCHEMA_VERSION
     id: str
@@ -337,6 +356,7 @@ class Analysis(_Model):
     redundancy: Redundancy | None = None
     pacing: list[PacingLane] = []
     model: ModelInfo
+    confidence: Confidence | None = Field(default=None, description="Absent on analyses made before confidence existed.")
     warnings: list[Warning_] = []
 
 

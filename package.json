@@ -5,8 +5,8 @@
   "scripts": {
     "start": "node scripts/start.mjs",
     "start:prod": "node scripts/start.mjs --prod",
-    "dev:web": "pnpm --filter web dev",
+    "dev:web": "corepack pnpm --filter web dev",
     "dev:api": "uv run --package retent-api uvicorn retent_api.main:app --reload --port 8000",
-    "contract": "uv run --package retent-core python -m retent_core.contract_export && pnpm --filter web contract:types"
+    "contract": "uv run --package retent-core python -m retent_core.contract_export && corepack pnpm --filter web contract:types"
   }
 }

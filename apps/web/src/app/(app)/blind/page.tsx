@@ -8,6 +8,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { InterestChart } from "@/components/lab/InterestChart";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { ConfidenceCard } from "@/components/trust/ConfidenceCard";
+import { WhyDiffer } from "@/components/trust/WhyDiffer";
 import { Button, Panel } from "@/components/ui";
 import { CELL_LABEL, evalApi } from "@/lib/eval";
 import { fmtTime } from "@/lib/format";
@@ -193,6 +195,19 @@ export default function BlindTestPage() {
                 />
               </Panel>
 
+              {step !== "revealed" && video.confidence && (
+                <div className="mt-4 max-w-[760px]">
+                  <ConfidenceCard
+                    title="Before the reveal: how much to trust this prediction"
+                    level={video.confidence.level}
+                    evidence={video.confidence.evidence_text}
+                    disclaimer={video.confidence.level === "low"
+                      ? "Low confidence: the model is often wrong on videos like this one. Expect the curves to differ."
+                      : null}
+                  />
+                </div>
+              )}
+
               {step === "revealed" && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -228,9 +243,28 @@ export default function BlindTestPage() {
                   </div>
                 </motion.div>
               )}
+              {step === "revealed" && video.explain && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.5, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]"
+                >
+                  <WhyDiffer explain={video.explain} />
+                  {video.confidence && (
+                    <ConfidenceCard
+                      title="What we said before the reveal"
+                      level={video.confidence.level}
+                      evidence={video.confidence.evidence_text}
+                    />
+                  )}
+                </motion.div>
+              )}
               <p className="mt-5 max-w-[80ch] text-[12.5px] text-ink-3">
                 “Most replayed” shows relative interest within a video, rewatches included. It is not the share of viewers
-                still watching. That’s why both curves are drawn on a 0–1 relative scale.
+                still watching. Both curves are drawn on a relative scale: each is stretched between its own 5th and 95th
+                percentile, so one extreme moment (usually the opening) can’t flatten the rest. The scores compare ranks,
+                so they don’t depend on this scaling.
               </p>
             </>
           )}

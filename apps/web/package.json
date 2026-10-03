@@ -9,7 +9,7 @@
     "start": "next start --port 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "contract:types": "json2ts -i ../../packages/retent_core/schema/contract.schema.json -o src/lib/contract.gen.ts --unreachableDefinitions --additionalProperties=false --bannerComment '/* Generated from packages/retent_core/schema/contract.schema.json. Do not edit; run `pnpm contract`. */'"
+    "contract:types": "json2ts -i ../../packages/retent_core/schema/contract.schema.json -o src/lib/contract.gen.ts --unreachableDefinitions --additionalProperties=false --bannerComment \"/* Generated from packages/retent_core/schema/contract.schema.json. Do not edit; run pnpm contract. */\""
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

@@ -9,8 +9,10 @@ Baselines every method is compared against on the same held-out videos:
 - rules-v0: the hand-weighted engine the app shipped with before training,
 - random.
 
-Writes models/interest_lgbm.txt (trained on everything), models/model_card.json and
-models/eval_report.json (summary, per-cell, per-video overlays for the Validation Lab and Blind Test).
+Writes models/interest_lgbm.txt (trained on everything), models/model_card.json,
+models/eval_report.json (summary, per-cell, per-video overlays, confidence and explanations for the
+Validation Lab and Blind Test) and models/confidence.json (held-out accuracy per group, which the app
+turns into a confidence level for every analysis).
 
 Run: uv run --package retent-ml python -m retent_ml.train
 """
@@ -28,6 +30,7 @@ from retent_core.contract import N_BINS
 from retent_core.engine import HeuristicInterest
 from retent_core.features import BIN_FEATURES, build_features
 from retent_core.pipeline import sentences_from_captions
+from retent_core.trust import GROUP_LABEL, evidence_sentence, explain, group_stats, level_for
 from retent_ml.collect import OUT_DIR as D1_DIR, ROOT
 
 MODELS = ROOT / "models"
@@ -223,6 +226,34 @@ def add_llm_baseline(rows: list[dict], results: list[dict]) -> None:
         print(f"  llm baseline {i + 1}/{len(sample)} {vid} ρ={res['metrics']['llm']['spearman']:+.2f}", flush=True)
 
 
+def calibration(results: list[dict], version: str) -> dict:
+    """Held-out accuracy per category × language: the evidence behind every confidence level the app shows."""
+    groups = defaultdict(list)
+    for r in results:
+        groups[r["cell"]].append(r)
+    stats = lambda rs: group_stats([x["metrics"]["model"]["spearman"] for x in rs],  # noqa: E731
+                                   [x["metrics"]["model"]["peaks_found"] for x in rs])
+    return {"model": version, "created_at": datetime.now(UTC).isoformat(),
+            "method": "GroupKFold by channel; per video: rank correlation with YouTube's Most replayed curve",
+            "overall": stats(results), "groups": {c: stats(rs) for c, rs in sorted(groups.items())}}
+
+
+def annotate(rows: list[dict], results: list[dict]) -> None:
+    """Per held-out video: the confidence the app would have shown before the reveal (its group's stats
+    with this video left out, so it can't see its own answer) and why prediction and curve differ."""
+    by_id = {r["id"]: r for r in rows}
+    miss_rate = float(np.mean([x["metrics"]["model"]["spearman"] <= 0 for x in results]))
+    wps_col = BIN_FEATURES.index("wps")
+    for res in results:
+        peers = [x for x in results if x["cell"] == res["cell"] and x["id"] != res["id"]]
+        st = group_stats([x["metrics"]["model"]["spearman"] for x in peers], [x["metrics"]["model"]["peaks_found"] for x in peers])
+        label = GROUP_LABEL.get(res["cell"], res["cell"])
+        res["confidence"] = {"level": level_for(st), "group": label, **st, "evidence_text": evidence_sentence(st, label)}
+        row = by_id[res["id"]]
+        res["explain"] = explain(res["series"]["model"], row["y"], row["duration"], row["lines"],
+                                 wps=row["X"][:, wps_col], miss_rate=miss_rate)
+
+
 def summarize(results: list[dict]) -> dict:
     methods = [m for m in results[0]["metrics"] if all(m in r["metrics"] for r in results)]
     out: dict = {"overall": {}, "by_cell": {}, "wins": {}}
@@ -270,6 +301,7 @@ def main() -> None:
     if args.llm_baseline:
         add_llm_baseline(rows, results)
     summary = summarize(results)
+    annotate(rows, results)
     model = fit(rows)
     MODELS.mkdir(exist_ok=True)
     model.residual.booster_.save_model(str(MODELS / "interest_lgbm.txt"))
@@ -288,6 +320,7 @@ def main() -> None:
               "cells": {c: sum(r["cell"] == c for r in rows) for c in sorted({r["cell"] for r in rows})},
               "summary": summary, "videos": results}
     (MODELS / "eval_report.json").write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
+    (MODELS / "confidence.json").write_text(json.dumps(calibration(results, version), indent=1), encoding="utf-8")
 
     print("\nHeld-out channels, mean over videos (95% CI):")
     print(f"{'method':10s} {'spearman':>22s} {'peaks found':>22s} {'dips found':>22s}")

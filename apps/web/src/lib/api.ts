@@ -1,4 +1,5 @@
 import type { Analysis, AnalyzeRequest, JobAccepted, Simulation, StageEvent } from "./contract.gen";
+import type { Explanation } from "./eval";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
@@ -19,7 +20,12 @@ export type AnalysisSummary = {
   has_actual: boolean;
 };
 
-export type ActualCurve = { source: string; points: { start_time: number; end_time: number; value: number }[] };
+export type ActualCurve = {
+  source: string;
+  points: { start_time: number; end_time: number; value: number }[];
+  /** Where our prediction and this curve agree and differ, and why. */
+  explain?: Explanation;
+};
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {

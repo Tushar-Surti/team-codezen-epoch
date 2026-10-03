@@ -1,5 +1,5 @@
 {
- "version": "lgbm-20261003-0256",
+ "version": "lgbm-20261003-0338",
  "trained_on": 338,
  "channels": 64,
  "features": [
@@ -49,7 +49,7 @@
  },
  "target": "YouTube 'Most replayed', z-scored within each video",
  "evaluation": "GroupKFold by channel",
- "created_at": "2026-10-03T02:56:13.811580+00:00",
+ "created_at": "2026-10-03T03:38:28.157059+00:00",
  "importance_gain": {
   "numeral_rate": 4327.695961475372,
   "wps": 3046.1065011024475,

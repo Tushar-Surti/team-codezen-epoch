@@ -7,6 +7,7 @@ Retent AI reads a video script (before you shoot) or transcript (before you publ
 - Plan and architecture: [docs/PLAN.md](docs/PLAN.md)
 - Task tracker (what's done and what's left): [docs/TASKS.md](docs/TASKS.md)
 - Product record: [PRODUCT.md](PRODUCT.md)
+- Presentation guide and panel Q&A: [docs/PRESENTATION.md](docs/PRESENTATION.md)
 - Setup and data collection (MacBook): [docs/SETUP.md](docs/SETUP.md)
 
 ## Quick start

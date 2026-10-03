@@ -101,10 +101,22 @@ def get_analysis(analysis_id: str) -> Analysis:
 @app.get("/api/analyses/{analysis_id}/actual")
 def get_actual(analysis_id: str) -> dict:
     """YouTube's public "Most replayed" curve for a public video, when we have it."""
+    import numpy as np
+
+    from retent_core.trust import explain
+
     heat = store.heatmap(analysis_id)
-    if not heat:
+    a = store.get(analysis_id)
+    if not heat or a is None:
         raise HTTPException(404, "No actual curve for this analysis")
-    return {"source": "youtube_most_replayed", "points": heat}
+    # Same 100-bin grid as the curve: YouTube's points resampled at the bin centres.
+    dur = a.metrics.duration_seconds
+    xs = np.array([(h["start_time"] + h["end_time"]) / 2 for h in heat])
+    actual = np.interp((np.arange(len(a.curve.bins)) + 0.5) / len(a.curve.bins) * dur, xs, [h["value"] for h in heat])
+    wpm = next((lane.values for lane in a.pacing if lane.key == "wpm"), None)
+    why = explain([b.interest for b in a.curve.bins], actual, dur, [(s.start, s.text) for s in a.sentences],
+                  wps=[v / 60 for v in wpm] if wpm else None)
+    return {"source": "youtube_most_replayed", "points": heat, "explain": why}
 
 
 async def _run_script_job(job, req: AnalyzeRequest, analysis_id: str) -> None:

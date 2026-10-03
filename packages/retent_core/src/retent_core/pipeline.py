@@ -16,10 +16,11 @@ from retent_core.contract import (
     N_BINS, Analysis, Curve, CurveBin, Engine, Fix, KeyMoment, Language, Metrics, ModelInfo, PacingLane,
     Redundancy, Section, Sentence, VideoMeta, Warning_,
 )
-from retent_core.engine import InterestModel, default_model, key_moments
+from retent_core.engine import MODELS_DIR, InterestModel, default_model, key_moments
 from retent_core.features import TimedSentence, redundancy_matrix
 from retent_core.flags import build_flags
 from retent_core.simulator import apply_ops, delta, edited_semantic, run
+from retent_core.trust import assess
 from retent_core.text import (
     DEFAULT_WPS, content_tokens, detect_language, estimate_seconds, merge_caption_segments, split_script,
 )
@@ -204,5 +205,8 @@ def analyze_sentences(
         redundancy=Redundancy(size=red.shape[0], values=[round(float(v), 3) for v in red.ravel()]),
         pacing=pacing,
         model=ModelInfo(version=getattr(model, "version", "heuristic-v0"), trained_on=getattr(model, "trained_on", 0)),
+        confidence=assess(category=meta.category, language=meta.language or langs.most_common(1)[0][0],
+                          duration=fs.duration, timing=timing, model_version=getattr(model, "version", "heuristic-v0"),
+                          models_dir=MODELS_DIR),
         warnings=warnings,
     )
