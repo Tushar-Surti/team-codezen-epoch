@@ -1,0 +1,1666 @@
+{
+  "$defs": {
+    "Analysis": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1",
+          "default": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "partial",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "synthetic": {
+          "description": "True for development fixtures; the UI must label these as synthetic.",
+          "title": "Synthetic",
+          "type": "boolean"
+        },
+        "engine": {
+          "$ref": "#/$defs/Engine"
+        },
+        "meta": {
+          "$ref": "#/$defs/VideoMeta"
+        },
+        "sentences": {
+          "items": {
+            "$ref": "#/$defs/Sentence"
+          },
+          "title": "Sentences",
+          "type": "array"
+        },
+        "sections": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Section"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "curve": {
+          "$ref": "#/$defs/Curve"
+        },
+        "metrics": {
+          "$ref": "#/$defs/Metrics"
+        },
+        "flags": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Flag"
+          },
+          "title": "Flags",
+          "type": "array"
+        },
+        "fixes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Fix"
+          },
+          "title": "Fixes",
+          "type": "array"
+        },
+        "promises": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PromiseItem"
+          },
+          "title": "Promises",
+          "type": "array"
+        },
+        "loops": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/OpenLoop"
+          },
+          "title": "Loops",
+          "type": "array"
+        },
+        "redundancy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Redundancy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pacing": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PacingLane"
+          },
+          "title": "Pacing",
+          "type": "array"
+        },
+        "model": {
+          "$ref": "#/$defs/ModelInfo"
+        },
+        "warnings": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Warning_"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "created_at",
+        "status",
+        "synthetic",
+        "engine",
+        "meta",
+        "sentences",
+        "sections",
+        "curve",
+        "metrics",
+        "flags",
+        "fixes",
+        "promises",
+        "loops",
+        "redundancy",
+        "pacing",
+        "model",
+        "warnings"
+      ],
+      "title": "Analysis",
+      "type": "object"
+    },
+    "AnalyzeRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "script": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Script or transcript text (script mode).",
+          "title": "Script"
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Public YouTube URL (url mode).",
+          "title": "Source Url"
+        },
+        "candidate_titles": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Candidate Titles",
+          "type": "array"
+        },
+        "thumbnail_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thumbnail Text"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Language"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Auto-detected when null."
+        },
+        "engine": {
+          "$ref": "#/$defs/Engine",
+          "default": "auto"
+        }
+      },
+      "required": [
+        "title",
+        "category",
+        "script",
+        "source_url",
+        "candidate_titles",
+        "thumbnail_text",
+        "language",
+        "engine"
+      ],
+      "title": "AnalyzeRequest",
+      "type": "object"
+    },
+    "Category": {
+      "enum": [
+        "tech",
+        "education",
+        "vlog"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "Curve": {
+      "additionalProperties": false,
+      "properties": {
+        "bins": {
+          "items": {
+            "$ref": "#/$defs/CurveBin"
+          },
+          "maxItems": 100,
+          "minItems": 100,
+          "title": "Bins",
+          "type": "array"
+        },
+        "typical": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/TypicalBin"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Typical range for this category and length, when known.",
+          "title": "Typical"
+        },
+        "calibration": {
+          "enum": [
+            "calibrated",
+            "uncalibrated"
+          ],
+          "title": "Calibration",
+          "type": "string"
+        },
+        "calibration_n": {
+          "description": "Number of real absolute retention curves the level is calibrated on.",
+          "minimum": 0,
+          "title": "Calibration N",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "bins",
+        "typical",
+        "calibration",
+        "calibration_n"
+      ],
+      "title": "Curve",
+      "type": "object"
+    },
+    "CurveBin": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "exclusiveMaximum": 100,
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "t": {
+          "description": "Bin centre in seconds.",
+          "title": "T",
+          "type": "number"
+        },
+        "retention": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Retention",
+          "type": "number"
+        },
+        "lo": {
+          "description": "Lower edge of the uncertainty band.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Lo",
+          "type": "number"
+        },
+        "hi": {
+          "description": "Upper edge of the uncertainty band.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Hi",
+          "type": "number"
+        },
+        "interest": {
+          "description": "Relative interest within this video (z-score).",
+          "title": "Interest",
+          "type": "number"
+        },
+        "hazard": {
+          "description": "Share of remaining viewers lost in this bin.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Hazard",
+          "type": "number"
+        }
+      },
+      "required": [
+        "index",
+        "t",
+        "retention",
+        "lo",
+        "hi",
+        "interest",
+        "hazard"
+      ],
+      "title": "CurveBin",
+      "type": "object"
+    },
+    "Delta": {
+      "additionalProperties": false,
+      "properties": {
+        "intro_retention": {
+          "description": "Change in share at 0:30 (fraction points).",
+          "title": "Intro Retention",
+          "type": "number"
+        },
+        "apv": {
+          "title": "Apv",
+          "type": "number"
+        },
+        "avd_seconds": {
+          "title": "Avd Seconds",
+          "type": "number"
+        },
+        "viewers_at_payoff": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Change per 1,000 starters.",
+          "title": "Viewers At Payoff"
+        },
+        "runtime_seconds": {
+          "description": "Change in total runtime.",
+          "title": "Runtime Seconds",
+          "type": "number"
+        },
+        "watch_time_per_1000": {
+          "description": "Change in total minutes watched per 1,000 starters.",
+          "title": "Watch Time Per 1000",
+          "type": "number"
+        }
+      },
+      "required": [
+        "intro_retention",
+        "apv",
+        "avd_seconds",
+        "viewers_at_payoff",
+        "runtime_seconds",
+        "watch_time_per_1000"
+      ],
+      "title": "Delta",
+      "type": "object"
+    },
+    "EditOp": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "$ref": "#/$defs/EditOpKind"
+        },
+        "sentence_ids": {
+          "default": [],
+          "description": "Sentences the op acts on.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Sentence Ids",
+          "type": "array"
+        },
+        "after_sentence_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For \"move\"/\"insert\": place after this sentence (\"\" = at start).",
+          "title": "After Sentence Id"
+        },
+        "new_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For \"insert\"/\"rewrite\".",
+          "title": "New Text"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For \"interrupt\": what to show on screen.",
+          "title": "Note"
+        }
+      },
+      "required": [
+        "op",
+        "sentence_ids",
+        "after_sentence_id",
+        "new_text",
+        "note"
+      ],
+      "title": "EditOp",
+      "type": "object"
+    },
+    "EditOpKind": {
+      "enum": [
+        "cut",
+        "trim",
+        "move",
+        "insert",
+        "rewrite",
+        "interrupt",
+        "rechapter"
+      ],
+      "title": "EditOpKind",
+      "type": "string"
+    },
+    "Engine": {
+      "enum": [
+        "deep",
+        "fast",
+        "auto"
+      ],
+      "title": "Engine",
+      "type": "string"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "sentence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sentence Ids",
+          "type": "array"
+        },
+        "quote": {
+          "title": "Quote",
+          "type": "string"
+        },
+        "start": {
+          "title": "Start",
+          "type": "number"
+        },
+        "end": {
+          "title": "End",
+          "type": "number"
+        },
+        "related_sentence_ids": {
+          "default": [],
+          "description": "Second passage, e.g. the earlier text a repetition repeats.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Related Sentence Ids",
+          "type": "array"
+        },
+        "related_quote": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Related Quote"
+        },
+        "related_start": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Related Start"
+        },
+        "related_end": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Related End"
+        }
+      },
+      "required": [
+        "sentence_ids",
+        "quote",
+        "start",
+        "end",
+        "related_sentence_ids",
+        "related_quote",
+        "related_start",
+        "related_end"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Fix": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "flag_id": {
+          "title": "Flag Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "ops": {
+          "items": {
+            "$ref": "#/$defs/EditOp"
+          },
+          "title": "Ops",
+          "type": "array"
+        },
+        "delta": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Delta"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "From re-simulation; null until simulated."
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "id",
+        "flag_id",
+        "title",
+        "rationale",
+        "ops",
+        "delta",
+        "provenance"
+      ],
+      "title": "Fix",
+      "type": "object"
+    },
+    "Flag": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/FlagKind"
+        },
+        "title": {
+          "description": "Sharp, specific headline: \"Intro runs 0:45 before the hook\".",
+          "title": "Title",
+          "type": "string"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "start": {
+          "title": "Start",
+          "type": "number"
+        },
+        "end": {
+          "title": "End",
+          "type": "number"
+        },
+        "severity": {
+          "description": "Fixed 5-step magnitude ramp.",
+          "maximum": 5,
+          "minimum": 1,
+          "title": "Severity",
+          "type": "integer"
+        },
+        "viewers_lost": {
+          "description": "Estimated viewers lost per 1,000 starters.",
+          "minimum": 0,
+          "title": "Viewers Lost",
+          "type": "number"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "signals": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Signal"
+          },
+          "title": "Signals",
+          "type": "array"
+        },
+        "norm": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Norm"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fix_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Fix Ids",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "detail",
+        "start",
+        "end",
+        "severity",
+        "viewers_lost",
+        "confidence",
+        "evidence",
+        "signals",
+        "norm",
+        "fix_ids",
+        "provenance"
+      ],
+      "title": "Flag",
+      "type": "object"
+    },
+    "FlagKind": {
+      "enum": [
+        "late_hook",
+        "promise_debt",
+        "repetition",
+        "tangent",
+        "low_density",
+        "monotony",
+        "early_ask",
+        "premature_wrap",
+        "open_loop",
+        "complexity_spike",
+        "chapter_skip"
+      ],
+      "title": "FlagKind",
+      "type": "string"
+    },
+    "InputMode": {
+      "enum": [
+        "script",
+        "video",
+        "url"
+      ],
+      "title": "InputMode",
+      "type": "string"
+    },
+    "JobAccepted": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "title": "Job Id",
+          "type": "string"
+        },
+        "analysis_id": {
+          "title": "Analysis Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id",
+        "analysis_id"
+      ],
+      "title": "JobAccepted",
+      "type": "object"
+    },
+    "KeyMoment": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "intro",
+            "dip",
+            "spike",
+            "top"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "start": {
+          "title": "Start",
+          "type": "number"
+        },
+        "end": {
+          "title": "End",
+          "type": "number"
+        },
+        "magnitude": {
+          "description": "Size of the dip/spike in retention points.",
+          "title": "Magnitude",
+          "type": "number"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "start",
+        "end",
+        "magnitude",
+        "label"
+      ],
+      "title": "KeyMoment",
+      "type": "object"
+    },
+    "Language": {
+      "enum": [
+        "en",
+        "hi",
+        "hinglish"
+      ],
+      "title": "Language",
+      "type": "string"
+    },
+    "Metrics": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_seconds": {
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "intro_retention": {
+          "description": "Share still watching at 0:30.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Intro Retention",
+          "type": "number"
+        },
+        "apv": {
+          "description": "Average percentage viewed.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Apv",
+          "type": "number"
+        },
+        "avd_seconds": {
+          "description": "Average view duration.",
+          "title": "Avd Seconds",
+          "type": "number"
+        },
+        "payoff_time": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When the title's main promise pays off.",
+          "title": "Payoff Time"
+        },
+        "payoff_sentence_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sentence where the payoff lands.",
+          "title": "Payoff Sentence Id"
+        },
+        "viewers_at_payoff": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Per 1,000 starters.",
+          "title": "Viewers At Payoff"
+        },
+        "key_moments": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/KeyMoment"
+          },
+          "title": "Key Moments",
+          "type": "array"
+        }
+      },
+      "required": [
+        "duration_seconds",
+        "intro_retention",
+        "apv",
+        "avd_seconds",
+        "payoff_time",
+        "payoff_sentence_id",
+        "viewers_at_payoff",
+        "key_moments"
+      ],
+      "title": "Metrics",
+      "type": "object"
+    },
+    "ModelInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "description": "e.g. \"heuristic-v0\" or \"lgbm-2026.10.1\".",
+          "title": "Version",
+          "type": "string"
+        },
+        "trained_on": {
+          "description": "Videos the interest model was trained on.",
+          "minimum": 0,
+          "title": "Trained On",
+          "type": "integer"
+        },
+        "eval_report": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Id of the evaluation report backing it.",
+          "title": "Eval Report"
+        }
+      },
+      "required": [
+        "version",
+        "trained_on",
+        "eval_report"
+      ],
+      "title": "ModelInfo",
+      "type": "object"
+    },
+    "Norm": {
+      "additionalProperties": false,
+      "description": "Category norm computed from the dataset, e.g. median hook time for Hindi tech reviews.",
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "n": {
+          "description": "Videos the norm is computed from.",
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "label",
+        "value",
+        "n"
+      ],
+      "title": "Norm",
+      "type": "object"
+    },
+    "OpenLoop": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "opened_at": {
+          "title": "Opened At",
+          "type": "number"
+        },
+        "closed_at": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Closed At"
+        },
+        "open_text": {
+          "title": "Open Text",
+          "type": "string"
+        },
+        "close_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Close Text"
+        },
+        "status": {
+          "enum": [
+            "closed",
+            "unclosed",
+            "instant"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "opened_at",
+        "closed_at",
+        "open_text",
+        "close_text",
+        "status"
+      ],
+      "title": "OpenLoop",
+      "type": "object"
+    },
+    "PacingLane": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "enum": [
+            "wpm",
+            "info_rate",
+            "filler_rate",
+            "cut_rate",
+            "loudness",
+            "pitch_var",
+            "face"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 100,
+          "minItems": 100,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "unit",
+        "values"
+      ],
+      "title": "PacingLane",
+      "type": "object"
+    },
+    "PromiseItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "title",
+            "thumbnail"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "first_touch": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Touch"
+        },
+        "paid_off": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Paid Off"
+        },
+        "status": {
+          "enum": [
+            "paid",
+            "late",
+            "unpaid"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "evidence_sentence_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Sentence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "source",
+        "first_touch",
+        "paid_off",
+        "status",
+        "evidence_sentence_ids"
+      ],
+      "title": "PromiseItem",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Who produced a piece of content. Shown as a badge on every AI-written output.",
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/Provider"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "prompt_version"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Provider": {
+      "enum": [
+        "claude",
+        "groq",
+        "local",
+        "rules"
+      ],
+      "title": "Provider",
+      "type": "string"
+    },
+    "Redundancy": {
+      "additionalProperties": false,
+      "properties": {
+        "size": {
+          "description": "Matrix is size × size over equal time slices.",
+          "title": "Size",
+          "type": "integer"
+        },
+        "values": {
+          "description": "Row-major similarity values in [0, 1].",
+          "items": {
+            "type": "number"
+          },
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "size",
+        "values"
+      ],
+      "title": "Redundancy",
+      "type": "object"
+    },
+    "Section": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "topic",
+            "chapter"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "start": {
+          "title": "Start",
+          "type": "number"
+        },
+        "end": {
+          "title": "End",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "start",
+        "end"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "SegmentRole": {
+      "enum": [
+        "hook",
+        "greeting",
+        "setup",
+        "content",
+        "payoff",
+        "tangent",
+        "sponsor",
+        "cta",
+        "recap",
+        "outro",
+        "filler"
+      ],
+      "title": "SegmentRole",
+      "type": "string"
+    },
+    "Sentence": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Stable id, e.g. \"s0012\".",
+          "title": "Id",
+          "type": "string"
+        },
+        "start": {
+          "title": "Start",
+          "type": "number"
+        },
+        "end": {
+          "title": "End",
+          "type": "number"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "lang": {
+          "$ref": "#/$defs/Language"
+        },
+        "timing": {
+          "enum": [
+            "measured",
+            "estimated"
+          ],
+          "title": "Timing",
+          "type": "string"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SegmentRole"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "section_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section Id"
+        }
+      },
+      "required": [
+        "id",
+        "start",
+        "end",
+        "text",
+        "lang",
+        "timing",
+        "role",
+        "section_id"
+      ],
+      "title": "Sentence",
+      "type": "object"
+    },
+    "Signal": {
+      "additionalProperties": false,
+      "description": "One family of model attributions (grouped SHAP values) behind a flag.",
+      "properties": {
+        "family": {
+          "description": "Machine key, e.g. \"repetition\", \"off_promise\".",
+          "title": "Family",
+          "type": "string"
+        },
+        "label": {
+          "description": "Human label shown in the inspector.",
+          "title": "Label",
+          "type": "string"
+        },
+        "share": {
+          "description": "Share of this flag's added risk.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Share",
+          "type": "number"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Measured value, e.g. \"similarity 0.91\".",
+          "title": "Value"
+        }
+      },
+      "required": [
+        "family",
+        "label",
+        "share",
+        "value"
+      ],
+      "title": "Signal",
+      "type": "object"
+    },
+    "SimulateRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_id": {
+          "title": "Analysis Id",
+          "type": "string"
+        },
+        "fix_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fix Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "analysis_id",
+        "fix_ids"
+      ],
+      "title": "SimulateRequest",
+      "type": "object"
+    },
+    "Simulation": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_id": {
+          "title": "Analysis Id",
+          "type": "string"
+        },
+        "fix_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fix Ids",
+          "type": "array"
+        },
+        "curve": {
+          "$ref": "#/$defs/Curve"
+        },
+        "metrics": {
+          "$ref": "#/$defs/Metrics"
+        },
+        "delta": {
+          "$ref": "#/$defs/Delta"
+        },
+        "sentences": {
+          "description": "Edited script with re-estimated timing.",
+          "items": {
+            "$ref": "#/$defs/Sentence"
+          },
+          "title": "Sentences",
+          "type": "array"
+        }
+      },
+      "required": [
+        "analysis_id",
+        "fix_ids",
+        "curve",
+        "metrics",
+        "delta",
+        "sentences"
+      ],
+      "title": "Simulation",
+      "type": "object"
+    },
+    "Stage": {
+      "enum": [
+        "ingest",
+        "transcribe",
+        "segment",
+        "read",
+        "predict",
+        "explain",
+        "fix"
+      ],
+      "title": "Stage",
+      "type": "string"
+    },
+    "StageEvent": {
+      "additionalProperties": false,
+      "description": "Server-sent progress event while an analysis runs.",
+      "properties": {
+        "job_id": {
+          "title": "Job Id",
+          "type": "string"
+        },
+        "stage": {
+          "$ref": "#/$defs/Stage"
+        },
+        "status": {
+          "enum": [
+            "start",
+            "progress",
+            "done",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "progress": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Progress",
+          "type": "number"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Provenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "job_id",
+        "stage",
+        "status",
+        "message",
+        "progress",
+        "provenance"
+      ],
+      "title": "StageEvent",
+      "type": "object"
+    },
+    "TypicalBin": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "exclusiveMaximum": 100,
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "lo": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Lo",
+          "type": "number"
+        },
+        "hi": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Hi",
+          "type": "number"
+        }
+      },
+      "required": [
+        "index",
+        "lo",
+        "hi"
+      ],
+      "title": "TypicalBin",
+      "type": "object"
+    },
+    "VideoMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "candidate_titles": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Candidate Titles",
+          "type": "array"
+        },
+        "thumbnail_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thumbnail Text"
+        },
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "language": {
+          "$ref": "#/$defs/Language"
+        },
+        "input_mode": {
+          "$ref": "#/$defs/InputMode"
+        },
+        "duration_seconds": {
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Url"
+        },
+        "channel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Channel"
+        }
+      },
+      "required": [
+        "title",
+        "candidate_titles",
+        "thumbnail_text",
+        "category",
+        "language",
+        "input_mode",
+        "duration_seconds",
+        "source_url",
+        "channel"
+      ],
+      "title": "VideoMeta",
+      "type": "object"
+    },
+    "Warning_": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Warning_",
+      "type": "object"
+    }
+  },
+  "title": "Retent AI contract",
+  "type": "object",
+  "properties": {
+    "Analysis": {
+      "$ref": "#/$defs/Analysis"
+    },
+    "AnalyzeRequest": {
+      "$ref": "#/$defs/AnalyzeRequest"
+    },
+    "SimulateRequest": {
+      "$ref": "#/$defs/SimulateRequest"
+    },
+    "Simulation": {
+      "$ref": "#/$defs/Simulation"
+    },
+    "StageEvent": {
+      "$ref": "#/$defs/StageEvent"
+    },
+    "JobAccepted": {
+      "$ref": "#/$defs/JobAccepted"
+    }
+  },
+  "additionalProperties": false
+}

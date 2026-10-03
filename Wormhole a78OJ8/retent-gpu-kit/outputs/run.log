@@ -1,0 +1,7 @@
+﻿[2026-10-03 01:40:05] Retent AI GPU kit starting on MUGIWARA
+[2026-10-03 01:40:05] GPU: NVIDIA GeForce RTX 5050 Laptop GPU, 8151 MiB, 592.82
+[2026-10-03 01:40:05] Installing packages (first run downloads about 3 GB of CUDA PyTorch; later runs are instant)
+[2026-10-03 01:48:43] PyTorch: True 2.11.0+cu128
+[2026-10-03 01:48:43] START report-before
+[2026-10-03 01:48:51] DONE  report-before
+[2026-10-03 01:48:51] START collect-new-videos

@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -35,6 +37,9 @@ AUDIO_FORMAT = "bestaudio[abr<=80]/bestaudio[abr<=140]/bestaudio"
 # The default web client often gets only images without a PO token; the embedded player still
 # lists audio formats for embeddable videos.
 AUDIO_CLIENTS = ["web_embedded", "mweb", "default"]
+# One bad video is skipped; this many in a row means something systematic (library, driver,
+# YouTube block), so the run stops instead of cycling through the whole queue.
+MAX_CONSECUTIVE_FAILURES = 10
 
 
 def download_audio(video_id: str, folder: Path) -> Path:
@@ -53,7 +58,15 @@ class LocalWhisper:
     """faster-whisper on the local GPU (float16; int8 has cuBLAS failures on RTX 50-series).
 
     CTranslate2 needs the cuBLAS and cuDNN DLLs; the CUDA torch wheel ships them, so on Windows
-    their folder is added to the DLL search path instead of requiring a CUDA toolkit install."""
+    their folder is added to the DLL search path instead of requiring a CUDA toolkit install.
+
+    Speech chunks are decoded in batches (about 10x faster than one window at a time). A window
+    holds at most 448 tokens, and Devanagari takes about two tokens per character, so 30 s of
+    Hindi overflows it and batched decoding would drop the rest of the window; non-English audio
+    is therefore cut into 10 s chunks. On CUDA out-of-memory the batch is halved, down to the
+    sequential decoder."""
+
+    BATCH_SIZE = 8
 
     def __init__(self, model: str = "large-v3-turbo"):
         import os
@@ -66,15 +79,29 @@ class LocalWhisper:
                 os.add_dll_directory(str(Path(torch.__file__).parent / "lib"))
             except ImportError:
                 pass
-        from faster_whisper import WhisperModel
+        from faster_whisper import BatchedInferencePipeline, WhisperModel
 
         self.name = model
         self.model = WhisperModel(model, device="cuda", compute_type="float16")
+        self.batched = BatchedInferencePipeline(self.model)
 
     def transcribe(self, audio: Path, language: str | None) -> list[dict]:
-        segments, _ = self.model.transcribe(str(audio), language=language, vad_filter=True, beam_size=5)
-        return [{"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()}
-                for s in segments if s.text.strip()]
+        batch = self.BATCH_SIZE
+        while True:
+            try:
+                if batch > 1:
+                    segments, _ = self.batched.transcribe(
+                        str(audio), language=language, vad_filter=True, beam_size=5, batch_size=batch,
+                        without_timestamps=False, chunk_length=30 if language == "en" else 10)
+                else:
+                    segments, _ = self.model.transcribe(str(audio), language=language, vad_filter=True, beam_size=5)
+                return [{"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()}
+                        for s in segments if s.text.strip()]
+            except RuntimeError as exc:
+                if "out of memory" not in str(exc) or batch == 1:
+                    raise
+                batch //= 2
+                print(f"  CUDA out of memory; retrying with batch size {batch}", flush=True)
 
 
 def _language(rec: dict) -> str | None:
@@ -114,37 +141,54 @@ def main() -> None:
         if args.only and cell not in args.only.split(","):
             continue
         if needs_asr(rec, args.include_pending):
-            todo.append((0 if rec["caption"].get("status") != "pending" else 1, rec["duration"], f))
+            todo.append((0 if rec["caption"].get("status") != "pending" else 1, rec["duration"], f, rec["id"]))
     todo.sort()
     print(f"{len(todo)} records need ASR", flush=True)
 
-    used = 0.0
+    used, failures = 0.0, 0
     model = f"local:{local.name}" if local else f"groq:{args.model or groq.asr_model()}"
-    for _, duration, f in todo:
-        if used + duration / 60 > args.max_minutes:
-            print(f"audio budget reached ({used:.0f} min); rerun later to continue", flush=True)
-            break
-        rec = json.loads(f.read_text(encoding="utf-8"))
-        try:
-            with tempfile.TemporaryDirectory() as tmp:
-                audio = download_audio(rec["id"], Path(tmp))
+    with tempfile.TemporaryDirectory() as tmp, ThreadPoolExecutor(max_workers=1) as pool:
+        def fetch(video_id: str) -> Path:
+            folder = Path(tmp) / video_id
+            folder.mkdir(exist_ok=True)
+            return download_audio(video_id, folder)
+
+        # The next video's audio downloads while this one is transcribed, so the GPU doesn't wait.
+        upcoming = pool.submit(fetch, todo[0][3]) if todo else None
+        for i, (_, duration, f, video_id) in enumerate(todo):
+            if used + duration / 60 > args.max_minutes:
+                print(f"audio budget reached ({used:.0f} min); rerun later to continue", flush=True)
+                break
+            current = upcoming
+            upcoming = pool.submit(fetch, todo[i + 1][3]) if i + 1 < len(todo) else None
+            rec = json.loads(f.read_text(encoding="utf-8"))
+            try:
+                audio = current.result()
                 size_mb = audio.stat().st_size / 1e6
                 if size_mb > 24 and not local:
-                    print(f"{rec['id']} audio {size_mb:.0f} MB is over the upload limit; skipped", flush=True)
+                    print(f"{video_id} audio {size_mb:.0f} MB is over the upload limit; skipped", flush=True)
                     continue
                 segs = (local.transcribe(audio, _language(rec)) if local
                         else groq.transcribe(audio, _language(rec), args.model or groq.asr_model()))
-        except Exception as exc:  # noqa: BLE001 - keep going through the queue
-            print(f"{rec['id']} error {str(exc)[:120]}", flush=True)
-            time.sleep(3)
-            continue
-        used += duration / 60
-        previous = {k: rec["caption"].get(k) for k in ("kind", "key", "status")}
-        rec["caption"] = {"lang": _language(rec), "kind": "asr", "key": model,
-                          "status": "ok" if len(segs) >= 20 else "empty", "segments": segs,
-                          "replaced": previous, "transcribed_at": datetime.now(UTC).isoformat()}
-        f.write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
-        print(f"{rec['id']} asr {rec['caption']['status']} ({len(segs)} segments, {duration / 60:.1f} min)", flush=True)
+            except Exception as exc:  # noqa: BLE001 - keep going through the queue
+                failures += 1
+                print(f"[{i + 1}/{len(todo)}] {video_id} error {str(exc)[:120]}", flush=True)
+                if failures >= MAX_CONSECUTIVE_FAILURES:
+                    raise SystemExit(f"{failures} failures in a row; stopping so the cause can be fixed "
+                                     f"(rerun to continue; {used:.0f} min transcribed this run)") from exc
+                time.sleep(3)
+                continue
+            finally:
+                shutil.rmtree(Path(tmp) / video_id, ignore_errors=True)
+            failures = 0
+            used += duration / 60
+            previous = {k: rec["caption"].get(k) for k in ("kind", "key", "status")}
+            rec["caption"] = {"lang": _language(rec), "kind": "asr", "key": model,
+                              "status": "ok" if len(segs) >= 20 else "empty", "segments": segs,
+                              "replaced": previous, "transcribed_at": datetime.now(UTC).isoformat()}
+            f.write_text(json.dumps(rec, ensure_ascii=False), encoding="utf-8")
+            print(f"[{i + 1}/{len(todo)}] {video_id} asr {rec['caption']['status']} "
+                  f"({len(segs)} segments, {duration / 60:.1f} min)", flush=True)
     print(f"done; {used:.0f} min of audio transcribed", flush=True)
 
 

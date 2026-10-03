@@ -1,2 +1,4 @@
 # Trained model artifacts must keep LF endings: LightGBM's text model parser fails on CRLF.
 models/** text eol=lf
+# Shell scripts must keep LF endings or sh fails on macOS / Linux.
+*.sh text eol=lf

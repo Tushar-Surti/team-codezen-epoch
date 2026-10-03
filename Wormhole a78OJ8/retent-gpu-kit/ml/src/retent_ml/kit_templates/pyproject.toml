@@ -1,0 +1,12 @@
+# Retent AI GPU kit: a trimmed copy of the repo (shared core + offline pipeline).
+[tool.uv.workspace]
+members = ["packages/retent_core", "ml"]
+
+[tool.uv.sources]
+retent-core = { workspace = true }
+
+# CUDA 12.8 wheels (RTX 40/50-series, including Blackwell sm_120). Only torch comes from here.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

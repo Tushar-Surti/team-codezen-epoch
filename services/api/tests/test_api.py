@@ -64,5 +64,17 @@ def test_short_script_reports_an_error(client):
     assert "too short" in body
 
 
+def test_error_with_quotes_ends_with_valid_json(client, monkeypatch):
+    def boom(_script):
+        raise ValueError('YouTube said "no"\nsecond line')
+
+    monkeypatch.setattr(main, "sentences_from_script", boom)
+    job = client.post("/api/analyze", json={"title": "x", "category": "tech", "script": "anything"}).json()
+    with client.stream("GET", f"/api/jobs/{job['job_id']}/events") as res:
+        body = "".join(res.iter_text())
+    end = body.split("event: end\ndata: ", 1)[1].split("\n\n", 1)[0]
+    assert json.loads(end) == {"error": 'YouTube said "no"\nsecond line'}
+
+
 def test_analyze_needs_input(client):
     assert client.post("/api/analyze", json={"title": "x", "category": "tech"}).status_code == 422

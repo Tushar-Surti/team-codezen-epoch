@@ -20,6 +20,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from retent_core.contract import InputMode, Stage, VideoMeta
+from retent_core.engine import default_model
 from retent_core.pipeline import analyze_sentences, sentences_from_captions
 from retent_core.text import detect_language
 from retent_core.xray import aggregate, measure
@@ -81,17 +82,19 @@ def local_channels(min_transcripts: int = 3) -> list[dict]:
 
 def _measure_cached(vid: str, title: str, duration: float, heat: list[dict], segs: list[dict] | None,
                     category: str, chapters: list[dict] | None) -> dict:
-    """measure() keyed by video id; transcribed results are cached on disk (they never change)."""
+    """measure() keyed by video id, cached on disk until the code or the trained model changes."""
     path = MEASURED / f"{vid}.json"
+    model = default_model().version
     if path.exists():
         cached = json.loads(path.read_text(encoding="utf-8"))
-        if cached.get("v") == MEASURE_VERSION and cached["has_transcript"] == bool(segs):
+        if (cached.get("v") == MEASURE_VERSION and cached["has_transcript"] == bool(segs)
+                and cached.get("model") == model):
             return cached
     sents = sentences_from_captions(segs) if segs else None
     if sents is not None and len(sents) < 10:
         sents = None
     m = measure(sents, title, duration, heat, category, chapters)
-    m["v"] = MEASURE_VERSION
+    m["v"], m["model"] = MEASURE_VERSION, model
     path.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
     return m
 
@@ -167,7 +170,8 @@ def _analysis(vid: str, title: str, duration: float, segs: list[dict], category:
               chapters: list[dict] | None, heat: list[dict]) -> str:
     """Full analysis for one video, saved where the workspace can open it (with its real curve)."""
     aid = f"x{vid}"
-    if analyses.get_raw(aid):
+    # Re-run after a retrain so the workspace shows the current model's read, not a stale one.
+    if ((analyses.get_raw(aid) or {}).get("model") or {}).get("version") == default_model().version:
         return aid
     sents = sentences_from_captions(segs)
     text = " ".join(s.text for s in sents[:80])

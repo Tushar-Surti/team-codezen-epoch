@@ -101,7 +101,8 @@ class TwoPart:
         self.prior, self.residual, self.expert_weight = prior, residual, expert_weight
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        raw = self.prior + self.residual.predict(X[:, TEXT_IDX]) + self.expert_weight * expert_prior(X)
+        # Booster directly: same output as the sklearn wrapper, without its feature-name warning per call.
+        raw = self.prior + self.residual.booster_.predict(X[:, TEXT_IDX]) + self.expert_weight * expert_prior(X)
         return _smooth(raw, SMOOTH)
 
 

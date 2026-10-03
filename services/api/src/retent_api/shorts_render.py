@@ -21,16 +21,21 @@ from retent_ml.collect import _ydl
 ROOT = Path(__file__).resolve().parents[4]
 OUT_DIR = ROOT / "data" / "shorts"
 W, H = 1080, 1920
-FONT_BOLD = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
-FONT_BLACK = "/System/Library/Fonts/Supplemental/Arial Black.ttf"
+# macOS, Windows, Linux locations of the same faces; the first one present wins.
+FONT_BOLD = ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", "C:/Windows/Fonts/arialbd.ttf",
+             "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf", "DejaVuSans-Bold.ttf")
+FONT_BLACK = ("/System/Library/Fonts/Supplemental/Arial Black.ttf", "C:/Windows/Fonts/ariblk.ttf",
+              "/usr/share/fonts/truetype/msttcorefonts/Arial_Black.ttf", *FONT_BOLD)
 INK, PAPER, PEN, BRASS = (23, 23, 26), (247, 248, 245), (215, 38, 30), (215, 178, 90)
 
 
-def _font(path: str, size: int) -> ImageFont.FreeTypeFont:
-    try:
-        return ImageFont.truetype(path, size)
-    except OSError:
-        return ImageFont.load_default(size)
+def _font(paths: tuple[str, ...], size: int) -> ImageFont.FreeTypeFont:
+    for path in paths:
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    return ImageFont.load_default(size)
 
 
 def hook_card(text: str, path: Path) -> None:

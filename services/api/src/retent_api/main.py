@@ -409,10 +409,13 @@ async def job_events(job_id: str) -> StreamingResponse:
     if job is None:
         raise HTTPException(404, "Job not found")
 
+    import json
+
     async def gen():
         async for ev in job.stream():
             yield f"event: stage\ndata: {ev.model_dump_json()}\n\n"
-        yield f"event: end\ndata: {{\"error\": {('\"' + job.error + '\"') if job.error else 'null'}}}\n\n"
+        # json.dumps escapes quotes and newlines in the error (yt-dlp messages have both).
+        yield f"event: end\ndata: {json.dumps({'error': job.error or None})}\n\n"
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
