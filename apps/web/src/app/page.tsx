@@ -134,7 +134,7 @@ export default function Landing() {
           <div className="ml-auto flex items-center gap-5 text-[14px]">
             <Link href="/lab" className="text-ink-2 hover:text-ink">Accuracy</Link>
             <Link href="/blind" className="text-ink-2 hover:text-ink">Blind test</Link>
-            <Link href="/projects" className="rounded-[7px] bg-ink px-3.5 py-1.5 font-[600] text-paper hover:bg-cover">Open the app</Link>
+            <Link href="/projects" className="rounded-[7px] bg-ink px-3.5 py-1.5 font-[600] text-paper hover:bg-primary-hover">Open the app</Link>
           </div>
         </div>
       </nav>
@@ -149,7 +149,7 @@ export default function Landing() {
             and rewrites the fix in your voice. English, Hindi and Hinglish.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/new" className="hero-cta group inline-flex items-center gap-2 rounded-[9px] bg-ink px-5 py-3 text-[15.5px] font-[620] text-paper hover:bg-cover">
+            <Link href="/new" className="hero-cta group inline-flex items-center gap-2 rounded-[9px] bg-ink px-5 py-3 text-[15.5px] font-[620] text-paper hover:bg-primary-hover">
               Analyze a script
               <ArrowRight size={17} className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
             </Link>

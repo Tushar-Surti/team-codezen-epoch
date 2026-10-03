@@ -18,7 +18,7 @@ export default function ProjectsPage() {
         </div>
         <Link
           href="/new"
-          className="inline-flex items-center gap-2 rounded-[7px] bg-ink px-4 py-2 text-[14px] font-[600] text-paper transition-colors duration-200 hover:bg-cover"
+          className="inline-flex items-center gap-2 rounded-[7px] bg-ink px-4 py-2 text-[14px] font-[600] text-paper transition-colors duration-200 hover:bg-primary-hover"
         >
           <FilePlus2 size={16} aria-hidden /> New analysis
         </Link>

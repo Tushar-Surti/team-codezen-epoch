@@ -123,7 +123,7 @@ function ShortCard({ clip, result, index }: { clip: Clip; result: ShortsResult; 
           <button
             onClick={() => render.mutate()}
             disabled={render.isPending}
-            className="inline-flex items-center gap-1.5 rounded-[7px] bg-ink px-3 py-1.5 text-[13px] font-[620] text-paper hover:bg-cover disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-[7px] bg-ink px-3 py-1.5 text-[13px] font-[620] text-paper hover:bg-primary-hover disabled:opacity-50"
           >
             <Scissors size={14} aria-hidden /> Render Short
           </button>
@@ -132,7 +132,7 @@ function ShortCard({ clip, result, index }: { clip: Clip; result: ShortsResult; 
           <a
             href={videoUrl}
             download={render.data?.file}
-            className="inline-flex items-center gap-1.5 rounded-[7px] bg-ink px-3 py-1.5 text-[13px] font-[620] text-paper hover:bg-cover"
+            className="inline-flex items-center gap-1.5 rounded-[7px] bg-ink px-3 py-1.5 text-[13px] font-[620] text-paper hover:bg-primary-hover"
           >
             <Download size={14} aria-hidden /> Download MP4
           </a>
@@ -247,7 +247,7 @@ function ShortsFinder() {
                 type="button"
                 onClick={fromLink}
                 disabled={!urlOk || !!stage}
-                className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2 text-[14.5px] font-[620] text-paper hover:bg-cover disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2 text-[14.5px] font-[620] text-paper hover:bg-primary-hover disabled:opacity-40"
               >
                 {stage ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Film size={16} aria-hidden />}
                 Make Shorts
@@ -284,7 +284,7 @@ function ShortsFinder() {
           <button
             onClick={() => find.mutate(undefined)}
             disabled={!id || find.isPending}
-            className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2.5 text-[14.5px] font-[620] text-paper hover:bg-cover disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2.5 text-[14.5px] font-[620] text-paper hover:bg-primary-hover disabled:opacity-40"
           >
             {find.isPending ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Film size={16} aria-hidden />}
             {find.isPending ? "Finding the best moments…" : "Find Shorts"}

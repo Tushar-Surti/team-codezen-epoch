@@ -187,7 +187,7 @@ export default function RetentionImportPage() {
           <button
             onClick={() => run.mutate()}
             disabled={!file || run.isPending}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-ink px-5 py-3 text-[15px] font-[620] text-paper hover:bg-cover disabled:opacity-40"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-ink px-5 py-3 text-[15px] font-[620] text-paper hover:bg-primary-hover disabled:opacity-40"
           >
             {run.isPending && <Loader2 size={16} className="animate-spin" aria-hidden />}
             {analysisId ? "Compare with the prediction" : "Read the curve"}

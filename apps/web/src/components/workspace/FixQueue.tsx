@@ -208,7 +208,7 @@ export function FixQueue({ analysis }: { analysis: Analysis }) {
                     aria-pressed={applied}
                     className={clsx(
                       "inline-flex shrink-0 items-center gap-1.5 rounded-[6px] px-3 py-1.5 text-[13px] font-[600] transition-[background,color,box-shadow] duration-200",
-                      applied ? "bg-paper text-ink ring-1 ring-ink/25 hover:ring-ink/45" : "bg-ink text-paper hover:bg-cover",
+                      applied ? "bg-paper text-ink ring-1 ring-ink/25 hover:ring-ink/45" : "bg-ink text-paper hover:bg-primary-hover",
                     )}
                   >
                     {applied ? <Check size={15} aria-hidden /> : <Plus size={15} aria-hidden />}

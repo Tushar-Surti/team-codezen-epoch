@@ -313,7 +313,7 @@ export default function NewAnalysisPage() {
             type="button"
             disabled={!canRun}
             onClick={run}
-            className="group inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-ink px-5 py-3 text-[15px] font-[620] text-paper transition-[background,opacity] duration-200 hover:bg-cover disabled:cursor-not-allowed disabled:opacity-35"
+            className="group inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-ink px-5 py-3 text-[15px] font-[620] text-paper transition-[background,opacity] duration-200 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-35"
           >
             Predict the drop
             <ArrowRight size={17} className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />

@@ -450,7 +450,7 @@ function XRayPage() {
                 type="button"
                 onClick={() => start(input.trim(), { category })}
                 disabled={!canRun}
-                className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2 text-[14.5px] font-[620] text-paper hover:bg-cover disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2 text-[14.5px] font-[620] text-paper hover:bg-primary-hover disabled:opacity-40"
               >
                 {running ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <ScanSearch size={16} aria-hidden />}
                 X-Ray channel

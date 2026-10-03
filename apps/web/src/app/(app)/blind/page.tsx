@@ -131,7 +131,7 @@ export default function BlindTestPage() {
                   {step === "pick" && (
                     <button
                       onClick={() => setStep("predicted")}
-                      className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-4 py-2 text-[14px] font-[620] text-paper transition-colors duration-200 hover:bg-cover"
+                      className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-4 py-2 text-[14px] font-[620] text-paper transition-colors duration-200 hover:bg-primary-hover"
                     >
                       <Play size={15} aria-hidden /> Predict blind
                     </button>

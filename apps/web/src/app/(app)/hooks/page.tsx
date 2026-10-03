@@ -81,7 +81,7 @@ function HookLab() {
           <button
             onClick={() => run.mutate()}
             disabled={!id || run.isPending}
-            className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2.5 text-[14.5px] font-[620] text-paper transition-colors duration-200 hover:bg-cover disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2.5 text-[14.5px] font-[620] text-paper transition-colors duration-200 hover:bg-primary-hover disabled:opacity-40"
           >
             {run.isPending ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Sparkles size={16} aria-hidden />}
             {run.isPending ? "Writing and simulating…" : result ? "Pitch 5 more" : "Pitch 5 hooks"}

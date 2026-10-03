@@ -1,50 +1,118 @@
 @import "tailwindcss";
 
-/* ── Revision Draft world ─────────────────────────────────────────────────────
-   Bond-white script paper, carbon ink, navy cover stock with brass brads.
-   Script-doctor red marks risk only. WGA revision colors mark drafts only:
-   each has a paper tint (changed lines) and an ink step (chart marks, validated
-   for CVD separation in order Blue → Pink → Goldenrod → Green). */
+/* ── Retent AI design tokens ──────────────────────────────────────────────────
+   Two themes, two personalities, one token set:
+   · Light = "Instrument": cool off-white, charcoal ink, one cobalt accent. IBM Plex
+     (with its matching Devanagari) and Plex Mono for script text. 6px corners,
+     hairline rules, no decorative shadows, compact.
+   · Dark  = "Edit Bay": graphite panels like an NLE, Geist UI with Geist Mono
+     timecodes and panel labels. Tighter controls, light-on-graphite primary.
+   Red (--drop) marks predicted drops and risk only. Revision colors mark drafts
+   only. The theme is set on <html data-theme> by the inline script in layout.tsx. */
 :root {
-  --paper: #f7f8f5;
-  --paper-raised: #fcfcfa;
-  --paper-sunk: #eef0eb;
-  --rule: #dcdfd8;
-  --rule-strong: #c3c7be;
-  --ink: #17171a;
-  --ink-2: #45474d;
-  --ink-3: #62656c;
+  color-scheme: light;
 
-  --cover: #1b2440;
-  --cover-2: #243052;
-  --cover-3: #33406a;
-  --cover-ink: #eef0f6;
-  --cover-ink-2: #aab3ca;
-  --brass: #b08d3c;
-  --brass-bright: #d7b25a;
+  /* Surfaces and ink */
+  --canvas: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #eef0f3;
+  --nav: #ffffff;
+  --line: #dce0e5;
+  --line-strong: #c3c9d1;
+  --ink: #121418;
+  --ink-2: #474d57;
+  --ink-3: #656c77;
 
-  --pen: #d7261e;
-  --pen-text: #b11f18;
-  --pen-wash: rgb(215 38 30 / 0.08);
-  --pen-wash-strong: rgb(215 38 30 / 0.14);
+  /* Actions */
+  --primary: #121418;
+  --primary-fg: #ffffff;
+  --primary-hover: #2c313a;
+  --accent: #1f4fd1;
+  --accent-wash: rgb(31 79 209 / 0.12);
 
-  --rev-blue: #2f5fd0;
-  --rev-pink: #d14b7d;
-  --rev-gold: #c07a00;
-  --rev-green: #178c6e;
-  --rev-blue-paper: #e3eafb;
-  --rev-pink-paper: #fbe4ec;
-  --rev-gold-paper: #faebcb;
-  --rev-green-paper: #dcf1ea;
+  /* Meaning */
+  --drop: #cf3429;
+  --drop-text: #b42a20;
+  --drop-wash: rgb(207 52 41 / 0.09);
+  --drop-wash-strong: rgb(207 52 41 / 0.15);
+  --good: #0e7f57;
+  --good-wash: rgb(14 127 87 / 0.11);
+  --warn: #9a5c00;
+  --warn-wash: rgb(154 92 0 / 0.11);
+  --actual: #7a45cc;
 
-  --actual: #8a4bd6;
+  /* Severity ramp, least to most */
+  --sev-1: #f2c9c4;
+  --sev-2: #e8988f;
+  --sev-3: #de675c;
+  --sev-4: #cf3429;
+  --sev-5: #9a1f17;
 
-  --sev-1: #f1c8c3;
-  --sev-2: #e8978f;
-  --sev-3: #df6459;
-  --sev-4: #d7261e;
-  --sev-5: #9e1b15;
+  /* Revision drafts: an ink step for marks and a paper tint for changed lines */
+  --rev-blue: #2753d4;
+  --rev-pink: #c2457a;
+  --rev-gold: #b06f00;
+  --rev-green: #0e7f57;
+  --rev-blue-paper: #e4ebfb;
+  --rev-pink-paper: #fae6ee;
+  --rev-gold-paper: #f8ecd2;
+  --rev-green-paper: #dcf1e8;
 
+  /* Type */
+  --ff-ui: var(--font-plex), var(--font-plex-deva), ui-sans-serif, system-ui, sans-serif;
+  --ff-script: var(--font-plex-mono), var(--font-plex-deva), ui-monospace, monospace;
+  --ff-tc: var(--ff-ui);
+  --fs-base: 14px;
+
+  /* Shape and density */
+  --r-panel: 6px;
+  --r-control: 6px;
+  --r-chip: 4px;
+  --h-control: 34px;
+  --h-control-sm: 28px;
+  --h-control-lg: 40px;
+  --h-input: 36px;
+  --px-control: 14px;
+  --fs-control: 13.5px;
+  --fw-control: 600;
+  --pad-panel: 16px;
+
+  /* Elevation: overlays only (menus, popovers, tooltips) */
+  --shadow-overlay: 0 2px 6px rgb(18 20 24 / 0.06), 0 14px 34px -14px rgb(18 20 24 / 0.24);
+  --shadow-raised: 0 1px 2px rgb(18 20 24 / 0.06);
+
+  /* Component personality */
+  --pt-ff: var(--ff-ui);
+  --pt-size: 13.5px;
+  --pt-weight: 600;
+  --pt-tracking: 0;
+  --pt-transform: none;
+  --pt-color: var(--ink);
+  --tab-active: var(--ink);
+  --seg-on-bg: var(--primary);
+  --seg-on-fg: var(--primary-fg);
+  --seg-on-ring: none;
+
+  /* Legacy names (Revision Draft theme). Kept as aliases while components move
+     to the names above; removed in the final polish phase. */
+  --paper: var(--canvas);
+  --paper-raised: var(--surface);
+  --paper-sunk: var(--surface-2);
+  --rule: var(--line);
+  --rule-strong: var(--line-strong);
+  --pen: var(--drop);
+  --pen-text: var(--drop-text);
+  --pen-wash: var(--drop-wash);
+  --pen-wash-strong: var(--drop-wash-strong);
+  --cover: #16181c;
+  --cover-2: #22252b;
+  --cover-3: #2e323a;
+  --cover-ink: #eef0f3;
+  --cover-ink-2: #a9afb9;
+  --brass: #7c9cff;
+  --brass-bright: #9db5ff;
+
+  /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-1: 160ms;
@@ -52,25 +120,109 @@
   --dur-3: 320ms;
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #0b0c0e;
+  --surface: #131417;
+  --surface-2: #1b1d21;
+  --nav: #08090a;
+  --line: #24262b;
+  --line-strong: #363940;
+  --ink: #ecedef;
+  --ink-2: #a1a5ad;
+  --ink-3: #7d828b;
+
+  --primary: #ecedef;
+  --primary-fg: #0b0c0e;
+  --primary-hover: #ffffff;
+  --accent: #4c9bff;
+  --accent-wash: rgb(76 155 255 / 0.16);
+
+  --drop: #f0645a;
+  --drop-text: #ff8076;
+  --drop-wash: rgb(240 100 90 / 0.12);
+  --drop-wash-strong: rgb(240 100 90 / 0.2);
+  --good: #3bc28a;
+  --good-wash: rgb(59 194 138 / 0.14);
+  --warn: #e2a64a;
+  --warn-wash: rgb(226 166 74 / 0.14);
+  --actual: #a982f0;
+
+  --sev-1: #4d2724;
+  --sev-2: #7c3731;
+  --sev-3: #b44a40;
+  --sev-4: #f0645a;
+  --sev-5: #ff9a91;
+
+  --rev-blue: #4c9bff;
+  --rev-pink: #f07aab;
+  --rev-gold: #e2a64a;
+  --rev-green: #3bc28a;
+  --rev-blue-paper: #15243a;
+  --rev-pink-paper: #34192a;
+  --rev-gold-paper: #30251a;
+  --rev-green-paper: #12291f;
+
+  --ff-ui: var(--font-geist), var(--font-noto-deva), ui-sans-serif, system-ui, sans-serif;
+  --ff-script: var(--ff-ui);
+  --ff-tc: var(--font-geist-mono), ui-monospace, monospace;
+  --fs-base: 13.5px;
+
+  --r-panel: 8px;
+  --r-control: 6px;
+  --r-chip: 4px;
+  --h-control: 30px;
+  --h-control-sm: 26px;
+  --h-control-lg: 36px;
+  --h-input: 32px;
+  --px-control: 12px;
+  --fs-control: 13px;
+  --fw-control: 500;
+  --pad-panel: 12px 14px;
+
+  --shadow-overlay: 0 0 0 1px var(--line-strong), 0 18px 40px -12px rgb(0 0 0 / 0.65);
+  --shadow-raised: 0 0 0 1px var(--line);
+
+  --pt-ff: var(--ff-tc);
+  --pt-size: 10.5px;
+  --pt-weight: 500;
+  --pt-tracking: 0.09em;
+  --pt-transform: uppercase;
+  --pt-color: var(--ink-3);
+  --tab-active: var(--accent);
+  --seg-on-bg: var(--surface-2);
+  --seg-on-fg: var(--ink);
+  --seg-on-ring: inset 0 0 0 1px var(--line-strong);
+
+  --cover: #08090a;
+  --cover-2: #141518;
+  --cover-3: #1f2125;
+}
+
 @theme inline {
-  --color-paper: var(--paper);
-  --color-paper-raised: var(--paper-raised);
-  --color-paper-sunk: var(--paper-sunk);
-  --color-rule: var(--rule);
-  --color-rule-strong: var(--rule-strong);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-nav: var(--nav);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
-  --color-cover: var(--cover);
-  --color-cover-2: var(--cover-2);
-  --color-cover-3: var(--cover-3);
-  --color-cover-ink: var(--cover-ink);
-  --color-cover-ink-2: var(--cover-ink-2);
-  --color-brass: var(--brass);
-  --color-brass-bright: var(--brass-bright);
-  --color-pen: var(--pen);
-  --color-pen-text: var(--pen-text);
-  --color-pen-wash: var(--pen-wash);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-accent-wash: var(--accent-wash);
+  --color-drop: var(--drop);
+  --color-drop-text: var(--drop-text);
+  --color-drop-wash: var(--drop-wash);
+  --color-good: var(--good);
+  --color-good-wash: var(--good-wash);
+  --color-warn: var(--warn);
+  --color-warn-wash: var(--warn-wash);
+  --color-actual: var(--actual);
   --color-rev-blue: var(--rev-blue);
   --color-rev-pink: var(--rev-pink);
   --color-rev-gold: var(--rev-gold);
@@ -79,10 +231,34 @@
   --color-rev-pink-paper: var(--rev-pink-paper);
   --color-rev-gold-paper: var(--rev-gold-paper);
   --color-rev-green-paper: var(--rev-green-paper);
-  --color-actual: var(--actual);
 
-  --font-ui: var(--font-anek-latin), var(--font-anek-deva), ui-sans-serif, system-ui, sans-serif;
-  --font-script: var(--font-courier), var(--font-tiro-deva), ui-monospace, monospace;
+  /* Legacy color names, see the alias block above */
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-pen: var(--pen);
+  --color-pen-text: var(--pen-text);
+  --color-pen-wash: var(--pen-wash);
+  --color-cover: var(--cover);
+  --color-cover-2: var(--cover-2);
+  --color-cover-3: var(--cover-3);
+  --color-cover-ink: var(--cover-ink);
+  --color-cover-ink-2: var(--cover-ink-2);
+  --color-brass: var(--brass);
+  --color-brass-bright: var(--brass-bright);
+
+  --font-ui: var(--ff-ui);
+  --font-script: var(--ff-script);
+  --font-tc: var(--ff-tc);
+
+  --radius-panel: var(--r-panel);
+  --radius-control: var(--r-control);
+  --radius-chip: var(--r-chip);
+
+  --shadow-overlay: var(--shadow-overlay);
+  --shadow-raised: var(--shadow-raised);
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
@@ -91,42 +267,46 @@
 
 @layer base {
   html {
-    color-scheme: light;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
   body {
-    background: var(--paper);
+    background: var(--canvas);
     color: var(--ink);
-    font-family: var(--font-ui);
-    font-size: 15px;
+    font-family: var(--ff-ui);
+    font-size: var(--fs-base);
     line-height: 1.45;
   }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
   ::selection {
-    background: var(--rev-blue-paper);
+    background: var(--accent-wash);
     color: var(--ink);
   }
   :focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: 3px;
   }
   input,
   textarea {
-    caret-color: var(--pen);
+    caret-color: var(--accent);
   }
-  /* Thin, paper-toned scrollbars inside panels. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--rule-strong) transparent;
+    scrollbar-color: var(--line-strong) transparent;
   }
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   *::-webkit-scrollbar-thumb {
-    background: var(--rule-strong);
-    border: 3px solid var(--paper);
+    background: var(--line-strong);
+    border: 3px solid var(--canvas);
     border-radius: 999px;
   }
   a {
@@ -135,18 +315,36 @@
   }
 }
 
+@layer components {
+  /* Panel and section labels: sentence case in light, mono caps in dark. */
+  .panel-title {
+    font-family: var(--pt-ff);
+    font-size: var(--pt-size);
+    font-weight: var(--pt-weight);
+    letter-spacing: var(--pt-tracking);
+    text-transform: var(--pt-transform);
+    color: var(--pt-color);
+    line-height: 1.3;
+  }
+}
+
 @layer utilities {
   .tnum {
     font-variant-numeric: tabular-nums;
   }
+  /* Timecodes: Plex with tabular figures in light, Geist Mono in dark. */
+  .tc {
+    font-family: var(--ff-tc);
+    font-variant-numeric: tabular-nums;
+  }
   .wdth-condensed {
-    font-variation-settings: "wdth" 82;
+    font-variation-settings: "wdth" 85;
   }
   .wdth-wide {
-    font-variation-settings: "wdth" 112;
+    font-variation-settings: "wdth" 100;
   }
   .font-script {
-    font-family: var(--font-script);
+    font-family: var(--ff-script);
   }
 }
 
@@ -155,6 +353,7 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
