@@ -97,25 +97,6 @@
   --nav-on-ring: none;
   --eyebrow-size: 11px;
 
-  /* Legacy names (Revision Draft theme). Kept as aliases while components move
-     to the names above; removed in the final polish phase. */
-  --paper: var(--canvas);
-  --paper-raised: var(--surface);
-  --paper-sunk: var(--surface-2);
-  --rule: var(--line);
-  --rule-strong: var(--line-strong);
-  --pen: var(--drop);
-  --pen-text: var(--drop-text);
-  --pen-wash: var(--drop-wash);
-  --pen-wash-strong: var(--drop-wash-strong);
-  --cover: #16181c;
-  --cover-2: #22252b;
-  --cover-3: #2e323a;
-  --cover-ink: #eef0f3;
-  --cover-ink-2: #a9afb9;
-  --brass: #7c9cff;
-  --brass-bright: #9db5ff;
-
   /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
@@ -203,9 +184,6 @@
   --nav-on-ring: inset 0 0 0 1px var(--line);
   --eyebrow-size: 10.5px;
 
-  --cover: #08090a;
-  --cover-2: #141518;
-  --cover-3: #1f2125;
 }
 
 /* `compact:` applies when the sidebar is an icon rail: collapsed by the user, or a narrow window. */
@@ -249,23 +227,6 @@
   --color-rev-pink-paper: var(--rev-pink-paper);
   --color-rev-gold-paper: var(--rev-gold-paper);
   --color-rev-green-paper: var(--rev-green-paper);
-
-  /* Legacy color names, see the alias block above */
-  --color-paper: var(--paper);
-  --color-paper-raised: var(--paper-raised);
-  --color-paper-sunk: var(--paper-sunk);
-  --color-rule: var(--rule);
-  --color-rule-strong: var(--rule-strong);
-  --color-pen: var(--pen);
-  --color-pen-text: var(--pen-text);
-  --color-pen-wash: var(--pen-wash);
-  --color-cover: var(--cover);
-  --color-cover-2: var(--cover-2);
-  --color-cover-3: var(--cover-3);
-  --color-cover-ink: var(--cover-ink);
-  --color-cover-ink-2: var(--cover-ink-2);
-  --color-brass: var(--brass);
-  --color-brass-bright: var(--brass-bright);
 
   --font-ui: var(--ff-ui);
   --font-script: var(--ff-script);
@@ -364,12 +325,6 @@
   .tc {
     font-family: var(--ff-tc);
     font-variant-numeric: tabular-nums;
-  }
-  .wdth-condensed {
-    font-variation-settings: "wdth" 85;
-  }
-  .wdth-wide {
-    font-variation-settings: "wdth" 100;
   }
   .font-script {
     font-family: var(--ff-script);

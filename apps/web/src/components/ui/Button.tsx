@@ -20,30 +20,39 @@ type AsLink = Common & Omit<ComponentProps<typeof Link>, keyof Common>;
 export type ButtonProps = AsButton | AsLink;
 
 const BASE =
-  "relative inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control border border-transparent leading-none [font-weight:var(--fw-control)] select-none transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out active:translate-y-px disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40";
+  "relative inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control border leading-none [font-weight:var(--fw-control)] select-none transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out active:translate-y-px disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40";
 
+// Each variant owns its border colour; a shared default would collide with it (see PAD below).
 const VARIANT: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-primary-fg hover:bg-primary-hover",
+  primary: "border-transparent bg-primary text-primary-fg hover:bg-primary-hover",
   secondary: "border-line-strong bg-surface text-ink hover:border-ink-3",
-  ghost: "text-ink-2 hover:bg-surface-2 hover:text-ink",
+  ghost: "border-transparent text-ink-2 hover:bg-surface-2 hover:text-ink",
   danger: "border-drop/45 text-drop-text hover:bg-drop-wash",
 };
 
 const SIZE: Record<ButtonSize, string> = {
-  sm: "h-(--h-control-sm) px-2.5 text-[12.5px]",
-  md: "h-(--h-control) px-(--px-control) text-(length:--fs-control)",
-  lg: "h-(--h-control-lg) px-5 text-[15px]",
+  sm: "h-(--h-control-sm) text-[12.5px]",
+  md: "h-(--h-control) text-(length:--fs-control)",
+  lg: "h-(--h-control-lg) text-[15px]",
+};
+
+// Padding and icon-square widths are exclusive, never both: Tailwind can't be relied on to order
+// two utilities for the same property, so emitting both lets the wrong one win.
+const PAD: Record<ButtonSize, string> = {
+  sm: "px-2.5",
+  md: "px-(--px-control)",
+  lg: "px-5",
 };
 
 const ICON: Record<ButtonSize, string> = {
-  sm: "w-(--h-control-sm) px-0",
-  md: "w-(--h-control) px-0",
-  lg: "w-(--h-control-lg) px-0",
+  sm: "w-(--h-control-sm)",
+  md: "w-(--h-control)",
+  lg: "w-(--h-control-lg)",
 };
 
 /** Class string for places that can't render <Button>, such as a <label> styled as a button. */
 export function buttonClass({ variant = "primary", size = "md", icon = false, block = false }: Style = {}) {
-  return clsx(BASE, VARIANT[variant], SIZE[size], icon && ICON[size], block && "w-full");
+  return clsx(BASE, VARIANT[variant], SIZE[size], icon ? ICON[size] : PAD[size], block && "w-full");
 }
 
 function isLink(p: ButtonProps): p is AsLink {

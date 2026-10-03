@@ -17,7 +17,13 @@ SILENCE_MIN_S = 2.0
 
 
 def _run(cmd: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            f"{cmd[0]} isn't installed on the machine running the API. Install ffmpeg "
+            "(brew install ffmpeg, or winget install ffmpeg on Windows), then restart the API."
+        ) from exc
 
 
 def duration(path: Path) -> float:

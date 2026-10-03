@@ -15,6 +15,7 @@ export function Dropzone({
   onFile: (file: File | null) => void;
   /** Accessible name for the file input. */
   label: string;
+  /** Include padding here; the dropzone sets none so callers never fight a default. */
   className?: string;
   children: ReactNode;
 }) {
@@ -32,7 +33,7 @@ export function Dropzone({
         onFile(e.dataTransfer.files?.[0] ?? null);
       }}
       className={clsx(
-        "flex cursor-pointer flex-col items-center justify-center rounded-panel border border-dashed p-6 text-center transition-[border-color,background-color,box-shadow] duration-150 focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--accent-wash)]",
+        "flex cursor-pointer flex-col items-center justify-center rounded-panel border border-dashed text-center transition-[border-color,background-color,box-shadow] duration-150 focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--accent-wash)]",
         dragging ? "border-accent bg-accent-wash" : "border-line-strong bg-surface hover:border-ink-3",
         className,
       )}

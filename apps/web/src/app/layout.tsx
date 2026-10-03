@@ -7,7 +7,7 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 // Light theme: IBM Plex, with its matching Devanagari and Plex Mono for script text.
-const plex = IBM_Plex_Sans({ subsets: ["latin", "latin-ext"], axes: ["wdth"], variable: "--font-plex" });
+const plex = IBM_Plex_Sans({ subsets: ["latin", "latin-ext"], variable: "--font-plex" });
 const plexDeva = IBM_Plex_Sans_Devanagari({ subsets: ["devanagari"], weight: ["400", "500", "600", "700"], variable: "--font-plex-deva" });
 const plexMono = IBM_Plex_Mono({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], variable: "--font-plex-mono" });
 // Dark theme: Geist, Geist Mono for timecodes, Noto Sans Devanagari. Not preloaded; light is the default.

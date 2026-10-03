@@ -94,8 +94,13 @@ export function Sidebar() {
       </div>
 
       <div className="flex shrink-0 items-center justify-between gap-2 border-t border-line px-3 py-3 compact:flex-col compact:px-0">
-        <ThemeToggle className="compact:hidden" />
-        <ThemeCycleButton className="hidden compact:inline-flex" />
+        {/* Visibility lives on wrappers: the controls set their own display, which would fight `hidden`. */}
+        <span className="contents compact:hidden">
+          <ThemeToggle />
+        </span>
+        <span className="hidden compact:contents">
+          <ThemeCycleButton />
+        </span>
         <Button
           variant="ghost"
           size="sm"

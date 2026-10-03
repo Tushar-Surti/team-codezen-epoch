@@ -54,9 +54,15 @@ function useFieldProps(id?: string) {
   };
 }
 
-export function Input({ className, id, ...props }: ComponentProps<"input">) {
+export function Input({ className, id, inputSize = "md", ...props }: ComponentProps<"input"> & { inputSize?: "md" | "lg" }) {
   const field = useFieldProps(id);
-  return <input {...field} {...props} className={clsx(CONTROL, "h-(--h-input) px-3 text-[14px]", className)} />;
+  return (
+    <input
+      {...field}
+      {...props}
+      className={clsx(CONTROL, "px-3", inputSize === "lg" ? "h-(--h-control-lg) text-[15px]" : "h-(--h-input) text-[14px]", className)}
+    />
+  );
 }
 
 export function Select({ className, id, children, ...props }: ComponentProps<"select">) {

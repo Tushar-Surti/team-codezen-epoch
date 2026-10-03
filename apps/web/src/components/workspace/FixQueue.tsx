@@ -29,7 +29,7 @@ function SeverityMark({ level }: { level: number }) {
 function ProvenanceBadge({ p }: { p: Provenance }) {
   const label = p.provider === "rules" ? "Rules engine" : p.provider === "claude" ? "Claude" : p.provider === "groq" ? "Groq" : "Local model";
   return (
-    <Badge tone={p.provider === "rules" ? "neutral" : "ai"} className="h-5 text-[11px]" title={`${p.model}${p.prompt_version ? ` · prompt ${p.prompt_version}` : ""}`}>
+    <Badge tone={p.provider === "rules" ? "neutral" : "ai"} size="sm" title={`${p.model}${p.prompt_version ? ` · prompt ${p.prompt_version}` : ""}`}>
       {p.provider === "rules" ? label : `Written by ${label}`}
     </Badge>
   );
@@ -186,7 +186,7 @@ export function FixQueue({ analysis }: { analysis: Analysis }) {
                 <SeverityMark level={flag.severity} />
                 <span className="min-w-0 flex-1">
                   {idx === 0 && flag.viewers_lost >= 5 && (
-                    <Badge tone="risk" className="mb-1.5 h-5 text-[11px]">
+                    <Badge tone="risk" size="sm" className="mb-1.5">
                       Biggest drop
                     </Badge>
                   )}

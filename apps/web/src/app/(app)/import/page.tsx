@@ -198,7 +198,7 @@ export default function RetentionImportPage() {
 
         <section aria-label="Result" className="flex min-w-0 flex-col gap-4">
           {!r ? (
-            <Panel className="grid min-h-[380px] place-items-center p-8 text-center">
+            <Panel padded={false} className="grid min-h-[380px] place-items-center p-8 text-center">
               <div className="flex max-w-md flex-col items-center gap-2">
                 <span className="mb-1 grid size-11 place-items-center rounded-full bg-surface-2 text-ink-3">
                   <ImageUp size={20} strokeWidth={1.6} aria-hidden />

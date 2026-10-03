@@ -7,6 +7,8 @@ import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { InterestChart } from "@/components/lab/InterestChart";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { Button, Panel } from "@/components/ui";
 import { CELL_LABEL, evalApi } from "@/lib/eval";
 import { fmtTime } from "@/lib/format";
 
@@ -47,25 +49,29 @@ export default function BlindTestPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="border-b border-rule px-8 pt-7 pb-5">
-        <h1 className="text-[26px] leading-tight font-[650] wdth-wide">Blind test</h1>
-        <p className="mt-1 max-w-[78ch] text-[14px] text-ink-2">
-          Pick a real public video. Retent AI predicts where attention rises and falls <em>from the transcript alone</em>,
-          using a model trained without this video’s channel. Then we reveal YouTube’s own “Most replayed” curve.
-        </p>
-      </header>
+      <PageHeader
+        title="Blind test"
+        description={
+          <>
+            Pick a real public video. Retent AI predicts where attention rises and falls <em>from the transcript alone</em>, using a model
+            trained without this video’s channel. Then we reveal YouTube’s own “Most replayed” curve.
+          </>
+        }
+      />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)]">
         {/* Video picker */}
-        <aside className="flex min-h-0 flex-col border-r border-rule" aria-label="Videos">
-          <div className="flex flex-wrap gap-1 border-b border-rule px-4 py-3">
+        <aside className="flex min-h-0 flex-col border-line bg-surface max-lg:border-b lg:border-r" aria-label="Videos">
+          <div className="flex flex-wrap gap-1.5 border-b border-line px-4 py-3" role="group" aria-label="Filter by category">
             {["all", ...Object.keys(summary?.cells ?? {})].map((c) => (
               <button
                 key={c}
+                type="button"
+                aria-pressed={cell === c}
                 onClick={() => setCell(c)}
                 className={clsx(
-                  "rounded-full px-2.5 py-1 text-[12px] font-[560] transition-colors duration-150",
-                  cell === c ? "bg-ink text-paper" : "text-ink-2 hover:bg-paper-sunk",
+                  "h-6 rounded-chip border px-2 text-[12px] font-[500] transition-colors duration-150",
+                  cell === c ? "border-transparent bg-primary text-primary-fg" : "border-line text-ink-2 hover:bg-surface-2 hover:text-ink",
                 )}
               >
                 {c === "all" ? `All ${summary?.n_videos ?? ""}` : `${CELL_LABEL[c] ?? c} ${summary?.cells[c]}`}
@@ -73,25 +79,27 @@ export default function BlindTestPage() {
             ))}
           </div>
           <ul className="min-h-0 flex-1 overflow-y-auto">
-            {error && <li className="p-4 text-[13px] text-pen-text">{(error as Error).message}</li>}
+            {error && <li className="p-4 text-[13px] text-drop-text">{(error as Error).message}</li>}
             {videos.map((v) => (
               <li key={v.id}>
                 <button
+                  type="button"
                   onClick={() => choose(v.id)}
+                  aria-current={picked === v.id ? "true" : undefined}
                   className={clsx(
-                    "flex w-full gap-3 border-b border-rule px-4 py-3 text-left transition-colors duration-150",
-                    picked === v.id ? "bg-paper-sunk" : "hover:bg-paper-sunk/60",
+                    "relative flex w-full gap-3 border-b border-line px-4 py-3 text-left transition-colors duration-150",
+                    picked === v.id ? "bg-accent-wash" : "hover:bg-surface-2/60",
                   )}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`}
                     alt=""
-                    className="h-[50px] w-[88px] shrink-0 rounded-[4px] bg-paper-sunk object-cover"
+                    className="h-[50px] w-[88px] shrink-0 rounded-chip bg-surface-2 object-cover"
                     loading="lazy"
                   />
                   <span className="min-w-0">
-                    <span className="line-clamp-2 text-[13px] leading-snug font-[580] text-ink">{v.title}</span>
+                    <span className="line-clamp-2 text-[13px] leading-snug font-[500] text-ink">{v.title}</span>
                     <span className="mt-0.5 block truncate text-[11.5px] text-ink-3">
                       {v.channel} · {CELL_LABEL[v.cell] ?? v.cell} · {fmtTime(v.duration)}
                     </span>
@@ -103,13 +111,15 @@ export default function BlindTestPage() {
         </aside>
 
         {/* Stage */}
-        <section className="flex min-h-0 flex-col overflow-y-auto px-8 py-6" aria-label="Blind test">
+        <section className="flex min-h-0 flex-col overflow-y-auto px-8 py-6 compact:px-6" aria-label="Blind test">
           {!video ? (
             <div className="grid flex-1 place-items-center text-center">
-              <div className="max-w-sm">
-                <EyeOff className="mx-auto mb-3 text-ink-3" aria-hidden />
-                <p className="text-[16px] font-[620]">Pick any video on the left.</p>
-                <p className="mt-1 text-[14px] text-ink-2">
+              <div className="flex max-w-sm flex-col items-center gap-2">
+                <span className="mb-1 grid size-11 place-items-center rounded-full bg-surface-2 text-ink-3">
+                  <EyeOff size={19} aria-hidden />
+                </span>
+                <p className="text-[16px] font-[600]">Pick any video on the left</p>
+                <p className="text-[13.5px] text-ink-2">
                   Every one is from a channel the model never trained on, so the prediction is genuinely blind.
                 </p>
               </div>
@@ -118,7 +128,7 @@ export default function BlindTestPage() {
             <>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <h2 className="text-[19px] leading-tight font-[640]">{video.title}</h2>
+                  <h2 className="text-[18px] leading-tight font-[600] tracking-[-0.01em]">{video.title}</h2>
                   <p className="mt-1 text-[13px] text-ink-3">
                     {video.channel} · {CELL_LABEL[video.cell] ?? video.cell} · {fmtTime(video.duration)} ·{" "}
                     {video.text_kind === "asr" ? "transcribed with Whisper" : "YouTube captions"} ·{" "}
@@ -129,44 +139,39 @@ export default function BlindTestPage() {
                 </div>
                 <div className="flex gap-2">
                   {step === "pick" && (
-                    <button
-                      onClick={() => setStep("predicted")}
-                      className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-4 py-2 text-[14px] font-[620] text-paper transition-colors duration-200 hover:bg-primary-hover"
-                    >
+                    <Button onClick={() => setStep("predicted")}>
                       <Play size={15} aria-hidden /> Predict blind
-                    </button>
+                    </Button>
                   )}
                   {step === "predicted" && (
                     <button
+                      type="button"
                       onClick={() => setStep("revealed")}
-                      className="inline-flex items-center gap-2 rounded-[8px] px-4 py-2 text-[14px] font-[620] text-paper transition-[filter] duration-200 hover:brightness-110"
-                      style={{ background: "var(--actual)" }}
+                      className="inline-flex h-(--h-control) items-center gap-2 rounded-control bg-actual px-(--px-control) text-(length:--fs-control) text-primary-fg [font-weight:var(--fw-control)] transition-[filter] duration-150 hover:brightness-110"
                     >
                       <Eye size={15} aria-hidden /> Reveal YouTube’s curve
                     </button>
                   )}
                   {step === "revealed" && (
-                    <button
-                      onClick={() => setStep("pick")}
-                      className="inline-flex items-center gap-2 rounded-[8px] border border-rule-strong px-4 py-2 text-[14px] font-[600] text-ink hover:border-ink/40"
-                    >
+                    <Button variant="secondary" onClick={() => setStep("pick")}>
                       <RotateCcw size={15} aria-hidden /> Run again
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
 
               <div className="mt-4 flex items-center gap-5 text-[12.5px] text-ink-3">
-                <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 bg-ink" />Retent AI, blind</span>
+                <span className="flex items-center gap-1.5"><span className="h-[2px] w-4 rounded-full bg-ink" />Retent AI, blind</span>
                 <span className={clsx("flex items-center gap-1.5 transition-opacity duration-500", step === "revealed" ? "opacity-100" : "opacity-30")}>
-                  <span className="h-[2px] w-4" style={{ background: "var(--actual)" }} />YouTube “Most replayed”
+                  <span className="h-[2px] w-4 rounded-full bg-actual" />YouTube “Most replayed”
                 </span>
                 {step === "revealed" && video.series?.llm && (
                   <button
+                    type="button"
                     onClick={() => setShowLlm((v) => !v)}
                     aria-pressed={showLlm}
-                    className={clsx("ml-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-[580] transition-colors",
-                      showLlm ? "border-rev-gold text-ink" : "border-rule-strong text-ink-2 hover:border-ink/40")}
+                    className={clsx("ml-auto flex h-(--h-control-sm) items-center gap-1.5 rounded-control border px-2.5 text-[12px] font-[500] transition-colors",
+                      showLlm ? "border-rev-gold text-ink" : "border-line-strong text-ink-2 hover:border-ink-3")}
                   >
                     <span className="h-[2px] w-4" style={{ background: "var(--rev-gold)" }} />
                     {showLlm ? "Hide" : "Compare with"} AI alone
@@ -176,7 +181,7 @@ export default function BlindTestPage() {
                   </button>
                 )}
               </div>
-              <div className="mt-2 h-[clamp(260px,42vh,420px)] rounded-[6px] border border-rule bg-paper-raised">
+              <Panel padded={false} className="mt-2 h-[clamp(260px,42vh,420px)] px-2 pt-2">
                 <InterestChart
                   key={video.id}
                   model={video.series!.model}
@@ -186,7 +191,7 @@ export default function BlindTestPage() {
                   revealed={step === "revealed"}
                   llm={showLlm ? video.series!.llm ?? null : null}
                 />
-              </div>
+              </Panel>
 
               {step === "revealed" && (
                 <motion.div
@@ -195,9 +200,9 @@ export default function BlindTestPage() {
                   transition={{ delay: 1.2, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                   className="mt-5 grid gap-4 sm:grid-cols-3"
                 >
-                  <div className="rounded-[7px] border border-rule bg-paper-raised p-4">
+                  <div className="rounded-panel border border-line bg-surface p-4">
                     <p className="text-[13px] text-ink-2">Shape match (rank correlation)</p>
-                    <p className="tnum mt-1 text-[30px] leading-none font-[640] wdth-wide">
+                    <p className="tnum mt-1 text-[30px] leading-none font-[600]">
                       <CountUp value={video.metrics.model.spearman} />
                     </p>
                     <p className="tnum mt-1.5 text-[12.5px] text-ink-3">
@@ -205,17 +210,17 @@ export default function BlindTestPage() {
                       {video.metrics.position.spearman.toFixed(2)}
                     </p>
                   </div>
-                  <div className="rounded-[7px] border border-rule bg-paper-raised p-4">
+                  <div className="rounded-panel border border-line bg-surface p-4">
                     <p className="text-[13px] text-ink-2">Biggest moments found</p>
-                    <p className="tnum mt-1 text-[30px] leading-none font-[640] wdth-wide">
+                    <p className="tnum mt-1 text-[30px] leading-none font-[600]">
                       <CountUp value={video.metrics.model.peaks_found * 10} digits={0} signed={false} />
                       <span className="text-[18px] text-ink-3"> of 10</span>
                     </p>
                     <p className="mt-1.5 text-[12.5px] text-ink-3">top-10 replayed moments, within ±1%</p>
                   </div>
-                  <div className="rounded-[7px] border border-rule bg-paper-raised p-4">
+                  <div className="rounded-panel border border-line bg-surface p-4">
                     <p className="text-[13px] text-ink-2">Quietest stretches found</p>
-                    <p className="tnum mt-1 text-[30px] leading-none font-[640] wdth-wide">
+                    <p className="tnum mt-1 text-[30px] leading-none font-[600]">
                       <CountUp value={video.metrics.model.dips_found * 10} digits={0} signed={false} />
                       <span className="text-[18px] text-ink-3"> of 10</span>
                     </p>

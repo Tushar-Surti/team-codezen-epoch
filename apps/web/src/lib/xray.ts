@@ -90,5 +90,5 @@ export const KIND_SHORT: Record<MomentKind, string> = {
 };
 
 export function verdictColor(v: Pattern["verdict"] | undefined): string {
-  return v === "hurts" ? "var(--pen)" : v === "helps" ? "var(--rev-green)" : "var(--ink-3)";
+  return v === "hurts" ? "var(--drop)" : v === "helps" ? "var(--rev-green)" : "var(--ink-3)";
 }

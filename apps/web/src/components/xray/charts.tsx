@@ -54,17 +54,17 @@ export function MomentChart({ p }: { p: Pattern }) {
           onMouseLeave={() => setHover(null)}
         >
           {/* the window the effect is measured over */}
-          <rect x={x(0)} y={pad.t} width={x(30) - x(0)} height={height - pad.t - pad.b} fill="var(--paper-sunk)" />
+          <rect x={x(0)} y={pad.t} width={x(30) - x(0)} height={height - pad.t - pad.b} fill="var(--surface-2)" />
           {[-m, -m / 2, 0, m / 2, m].map((v) => (
             <g key={v}>
-              <line x1={pad.l} x2={width - pad.r} y1={y(v)} y2={y(v)} stroke={v === 0 ? "var(--rule-strong)" : "var(--rule)"} />
-              <text x={pad.l - 6} y={y(v) + 3.5} textAnchor="end" className="tnum fill-ink-3 text-[10.5px]">
+              <line x1={pad.l} x2={width - pad.r} y1={y(v)} y2={y(v)} stroke={v === 0 ? "var(--line-strong)" : "var(--line)"} />
+              <text x={pad.l - 6} y={y(v) + 3.5} textAnchor="end" className="tc fill-ink-3 text-[10.5px]">
                 {v === 0 ? "0" : signed(v)}
               </text>
             </g>
           ))}
           {[-60, -30, 0, 30, 60, 90].map((o) => (
-            <text key={o} x={x(o)} y={height - 6} textAnchor={o === 90 ? "end" : "middle"} className="tnum fill-ink-3 text-[10.5px]">
+            <text key={o} x={x(o)} y={height - 6} textAnchor={o === 90 ? "end" : "middle"} className="tc fill-ink-3 text-[10.5px]">
               {o === 0 ? zeroLabel : offsetLabel(o)}
             </text>
           ))}
@@ -85,7 +85,7 @@ export function MomentChart({ p }: { p: Pattern }) {
             <g pointerEvents="none">
               <line x1={x(p.offsets[hi])} x2={x(p.offsets[hi])} y1={pad.t} y2={height - pad.b} stroke="var(--ink-3)" strokeDasharray="2 2" />
               {p.trace[hi] !== null && (
-                <circle cx={x(p.offsets[hi])} cy={y(p.trace[hi] as number)} r={4} fill={color} stroke="var(--paper-raised)" strokeWidth={2} />
+                <circle cx={x(p.offsets[hi])} cy={y(p.trace[hi] as number)} r={4} fill={color} stroke="var(--surface)" strokeWidth={2} />
               )}
             </g>
           )}
@@ -93,12 +93,12 @@ export function MomentChart({ p }: { p: Pattern }) {
       )}
       {hi !== null && width > 0 && (
         <div
-          className="pointer-events-none absolute top-0 z-10 rounded-[6px] border border-rule-strong bg-paper-raised px-2.5 py-1.5 text-[12px] shadow-[0_8px_20px_-12px_rgb(23_23_26/0.4)]"
+          className="pointer-events-none absolute top-0 z-10 rounded-control border border-line-strong bg-surface px-2.5 py-1.5 text-[12px] shadow-overlay"
           style={{ left: Math.min(Math.max(0, x(p.offsets[hi]) + 10), width - 170) }}
         >
-          <p className="tnum font-[620]">{p.offsets[hi] === 0 ? zeroLabel : `${offsetLabel(p.offsets[hi])} from the ${zeroLabel}`}</p>
+          <p className="tnum font-[600]">{p.offsets[hi] === 0 ? zeroLabel : `${offsetLabel(p.offsets[hi])} from the ${zeroLabel}`}</p>
           <p className="tnum text-ink-2">
-            This channel: <strong className="font-[620] text-ink">{p.trace[hi] === null ? "—" : `${signed(p.trace[hi] as number, 1)} pts`}</strong>
+            This channel: <strong className="font-[600] text-ink">{p.trace[hi] === null ? "—" : `${signed(p.trace[hi] as number, 1)} pts`}</strong>
           </p>
           <p className="tnum text-ink-2">
             Other channels: {p.typical_trace[hi] === null ? "—" : `${signed(p.typical_trace[hi] as number, 1)} pts`}
@@ -149,7 +149,7 @@ export function ShapeChart({ shape }: { shape: XRayReport["shape"] }) {
                 y={pad.t}
                 width={Math.max(2, x(z.to_pct) - x(z.from_pct))}
                 height={height - pad.t - pad.b}
-                fill={z.direction === "below" ? "var(--pen-wash-strong)" : "var(--rev-green-paper)"}
+                fill={z.direction === "below" ? "var(--drop-wash-strong)" : "var(--rev-green-paper)"}
               />
               <text x={x(z.from_pct) + 4} y={pad.t - 8} className="fill-ink-2 text-[11px] font-[600]">
                 {z.direction === "below" ? "Sags" : "Holds"} {z.from_pct}–{z.to_pct}%
@@ -158,8 +158,8 @@ export function ShapeChart({ shape }: { shape: XRayReport["shape"] }) {
           ))}
           {[0, 25, 50, 75, 100].map((f) => (
             <g key={f}>
-              <line x1={x(f * 0.99)} x2={x(f * 0.99)} y1={pad.t} y2={height - pad.b} stroke="var(--rule)" />
-              <text x={x(f * 0.99)} y={height - 6} textAnchor={f === 0 ? "start" : f === 100 ? "end" : "middle"} className="tnum fill-ink-3 text-[10.5px]">
+              <line x1={x(f * 0.99)} x2={x(f * 0.99)} y1={pad.t} y2={height - pad.b} stroke="var(--line)" />
+              <text x={x(f * 0.99)} y={height - 6} textAnchor={f === 0 ? "start" : f === 100 ? "end" : "middle"} className="tc fill-ink-3 text-[10.5px]">
                 {f}%
               </text>
             </g>
@@ -180,17 +180,17 @@ export function ShapeChart({ shape }: { shape: XRayReport["shape"] }) {
           {hover !== null && (
             <g pointerEvents="none">
               <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={height - pad.b} stroke="var(--ink-3)" strokeDasharray="2 2" />
-              <circle cx={x(hover)} cy={y(shape.channel[hover])} r={4} fill="var(--actual)" stroke="var(--paper-raised)" strokeWidth={2} />
+              <circle cx={x(hover)} cy={y(shape.channel[hover])} r={4} fill="var(--actual)" stroke="var(--surface)" strokeWidth={2} />
             </g>
           )}
         </svg>
       )}
       {hover !== null && width > 0 && (
         <div
-          className="pointer-events-none absolute top-6 z-10 rounded-[6px] border border-rule-strong bg-paper-raised px-2.5 py-1.5 text-[12px] shadow-[0_8px_20px_-12px_rgb(23_23_26/0.4)]"
+          className="pointer-events-none absolute top-6 z-10 rounded-control border border-line-strong bg-surface px-2.5 py-1.5 text-[12px] shadow-overlay"
           style={{ left: Math.min(Math.max(0, x(hover) + 10), width - 190) }}
         >
-          <p className="tnum font-[620]">{hover}% into the video</p>
+          <p className="tnum font-[600]">{hover}% into the video</p>
           <p className="tnum text-ink-2">
             {Math.abs(diff) < 0.1 ? "About the same as other channels" : `${Math.abs(diff).toFixed(2)} SD ${diff < 0 ? "below" : "above"} other channels`}
           </p>

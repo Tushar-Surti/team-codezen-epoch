@@ -137,7 +137,10 @@ class TrainedInterest:
         import lightgbm as lgb
 
         card = json.loads((models_dir / "model_card.json").read_text(encoding="utf-8"))
-        self.booster = lgb.Booster(model_file=str(models_dir / "interest_lgbm.txt"))
+        # Load from a string with LF endings: a CRLF checkout (git autocrlf on Windows) makes LightGBM's
+        # parser abort the whole process, which the fallback below can't catch.
+        model = (models_dir / "interest_lgbm.txt").read_text(encoding="utf-8").replace("\r\n", "\n")
+        self.booster = lgb.Booster(model_str=model)
         self.prior = np.array(json.loads((models_dir / "position_prior.json").read_text(encoding="utf-8")))
         self.cols = [BIN_FEATURES.index(c) for c in card["features"]]
         if self.booster.num_feature() != len(self.cols) or len(self.prior) != N_BINS:

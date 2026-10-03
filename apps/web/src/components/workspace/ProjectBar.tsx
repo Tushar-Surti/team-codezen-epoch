@@ -104,7 +104,7 @@ export function ProjectBar({ analysis, onExport }: { analysis: Analysis; onExpor
           {analysis.synthetic && (
             <Badge
               tone="warn"
-              className="h-5 text-[11px]"
+              size="sm"
               title="Real engine output from the rules-only v0 model, not yet the trained model."
             >
               Development data · {analysis.model.version}
@@ -115,7 +115,7 @@ export function ProjectBar({ analysis, onExport }: { analysis: Analysis; onExpor
 
       <DraftTabs />
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <Button href={`/hooks?a=${analysis.id}`} variant="ghost">
           <Zap size={15} aria-hidden /> Hook Lab
         </Button>

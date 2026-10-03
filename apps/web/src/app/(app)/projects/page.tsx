@@ -34,14 +34,14 @@ function Row({ r }: { r: AnalysisSummary }) {
         </Link>
         <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-3">
           {MODE_LABEL[r.input_mode] ?? r.input_mode}
-          {r.origin === "fixture" && <Badge className="h-[18px] px-1.5 text-[11px]">Sample</Badge>}
+          {r.origin === "fixture" && <Badge size="xs">Sample</Badge>}
           {r.synthetic && (
-            <Badge tone="warn" className="h-[18px] px-1.5 text-[11px]">
+            <Badge tone="warn" size="xs">
               Development data
             </Badge>
           )}
           {r.has_actual && (
-            <Badge tone="ai" className="h-[18px] px-1.5 text-[11px]">
+            <Badge tone="ai" size="xs">
               Has YouTube curve
             </Badge>
           )}

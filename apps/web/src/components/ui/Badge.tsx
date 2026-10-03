@@ -11,9 +11,18 @@ const TONE: Record<BadgeTone, string> = {
   ok: "border-good/30 bg-good-wash text-good",
 };
 
+// Sizes are props, not className overrides: two height or font-size utilities on one element
+// have no reliable winner in Tailwind.
+const SIZE = {
+  md: "h-[22px] gap-1.5 px-2 text-[12px]",
+  sm: "h-5 gap-1.5 px-1.5 text-[11px]",
+  xs: "h-[18px] gap-1 px-1.5 text-[11px]",
+} as const;
+
 /** Status label. `severity` (1–5) adds a dot from the severity ramp. */
 export function Badge({
   tone = "neutral",
+  size = "md",
   severity,
   dot,
   icon,
@@ -21,12 +30,13 @@ export function Badge({
   className,
   children,
 }: {
-  title?: string;
   tone?: BadgeTone;
+  size?: keyof typeof SIZE;
   severity?: 1 | 2 | 3 | 4 | 5;
   /** Any CSS color for a leading dot. */
   dot?: string;
   icon?: ReactNode;
+  title?: string;
   className?: string;
   children: ReactNode;
 }) {
@@ -35,7 +45,8 @@ export function Badge({
     <span
       title={title}
       className={clsx(
-        "inline-flex h-[22px] items-center gap-1.5 rounded-chip border px-2 text-[12px] leading-none font-[500] whitespace-nowrap",
+        "inline-flex items-center rounded-chip border leading-none font-[500] whitespace-nowrap",
+        SIZE[size],
         TONE[tone],
         className,
       )}

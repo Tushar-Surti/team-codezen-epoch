@@ -80,7 +80,7 @@ export function Workspace({ id }: { id: string }) {
   if (error || !analysis) {
     return (
       <div className="grid h-full place-items-center p-8">
-        <Panel className="flex max-w-md flex-col items-center gap-3 p-8 text-center" role="alert">
+        <Panel padded={false} className="flex max-w-md flex-col items-center gap-3 p-8 text-center" role="alert">
           <span className="grid size-10 place-items-center rounded-full bg-drop-wash text-drop">
             <AlertTriangle size={18} aria-hidden />
           </span>

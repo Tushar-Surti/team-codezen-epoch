@@ -74,16 +74,16 @@ export function InterestChart({ model, actual, duration, predicted = true, revea
           {!compact &&
             [0, 0.5, 1].map((v) => (
               <g key={v}>
-                <line x1={PAD.l} x2={width - PAD.r} y1={y(v)} y2={y(v)} stroke="var(--rule)" />
-                <text x={PAD.l - 8} y={y(v) + 4} textAnchor="end" className="fill-ink-3 text-[11px]">
+                <line x1={PAD.l} x2={width - PAD.r} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeDasharray="2 3" />
+                <text x={PAD.l - 8} y={y(v) + 4} textAnchor="end" className="tc fill-ink-3 text-[10.5px]">
                   {v === 1 ? "High" : v === 0 ? "Low" : ""}
                 </text>
               </g>
             ))}
-          <line x1={PAD.l} x2={width - PAD.r} y1={y(0)} y2={y(0)} stroke="var(--rule-strong)" />
+          <line x1={PAD.l} x2={width - PAD.r} y1={y(0)} y2={y(0)} stroke="var(--line-strong)" />
           {!compact &&
             ticks.map(({ f, t }) => (
-              <text key={f} x={x(f * (m.length - 1))} y={y(0) + 18} textAnchor="middle" className="tnum fill-ink-3 text-[11px]">
+              <text key={f} x={x(f * (m.length - 1))} y={y(0) + 18} textAnchor="middle" className="tc fill-ink-3 text-[10.5px]">
                 {fmtTime(t)}
               </text>
             ))}

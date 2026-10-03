@@ -119,7 +119,7 @@ export function StageProgress({
                   {done ? (
                     <Check size={12} strokeWidth={3} aria-hidden />
                   ) : active ? (
-                    <Spinner className="size-4" />
+                    <Spinner />
                   ) : failed ? (
                     <AlertTriangle size={11} strokeWidth={2.5} aria-hidden />
                   ) : null}

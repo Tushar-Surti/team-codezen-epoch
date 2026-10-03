@@ -2,12 +2,14 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { ArrowUpRight, Check, Database, Loader2, MonitorPlay as Youtube, ScanSearch } from "lucide-react";
+import { ArrowUpRight, Check, Database, MonitorPlay as Youtube, ScanSearch } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { PageHeader } from "@/components/shell/PageHeader";
+import { Badge, Button, Input, Panel, Segmented, Spinner } from "@/components/ui";
 import { MomentChart, ShapeChart, VideoSpark } from "@/components/xray/charts";
 import { api } from "@/lib/api";
 import { CATEGORY_LABEL, fmtTime, signed } from "@/lib/format";
@@ -47,7 +49,7 @@ function Consistency({ p }: { p: Pattern }) {
             key={v.id}
             title={`${signed(v.pts, 1)} pts`}
             className="h-[9px] w-[9px] rounded-full border-[1.5px]"
-            style={{ borderColor: agrees ? verdictColor(p.verdict) : "var(--rule-strong)", background: agrees ? verdictColor(p.verdict) : "transparent" }}
+            style={{ borderColor: agrees ? verdictColor(p.verdict) : "var(--line-strong)", background: agrees ? verdictColor(p.verdict) : "transparent" }}
           />
         );
       })}
@@ -57,9 +59,9 @@ function Consistency({ p }: { p: Pattern }) {
 
 function PatternCard({ p, index }: { p: Pattern; index: number }) {
   const badge =
-    p.verdict === "hurts" ? { text: "Costs viewers", cls: "bg-pen-wash text-pen-text" }
-    : p.verdict === "helps" ? { text: "Holds viewers", cls: "bg-rev-green-paper text-rev-green" }
-    : { text: p.videos < 2 ? "Only in 1 video" : "No clear pattern", cls: "bg-paper-sunk text-ink-2" };
+    p.verdict === "hurts" ? { text: "Costs viewers", tone: "risk" as const }
+    : p.verdict === "helps" ? { text: "Holds viewers", tone: "ok" as const }
+    : { text: p.videos < 2 ? "Only in 1 video" : "No clear pattern", tone: "neutral" as const };
   const agree = Math.round(p.consistency * p.videos);
   return (
     <motion.article
@@ -67,18 +69,18 @@ function PatternCard({ p, index }: { p: Pattern; index: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.45, delay: (index % 2) * 0.06, ease: EASE }}
-      className={clsx("flex flex-col rounded-[8px] border bg-paper-raised p-4", p.verdict === "mixed" ? "border-rule" : "border-rule-strong")}
+      className={clsx("flex flex-col rounded-panel border bg-surface p-4", p.verdict === "mixed" ? "border-line" : "border-line-strong")}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-[15px] font-[640]">{p.label}</h3>
-        <span className={clsx("rounded-[4px] px-1.5 py-0.5 text-[11.5px] font-[620]", badge.cls)}>{badge.text}</span>
+        <h3 className="text-[15px] font-[600]">{p.label}</h3>
+        <Badge tone={badge.tone} size="sm">{badge.text}</Badge>
         {p.verdict !== "mixed" && (
           <span className="text-[11.5px] text-ink-3">{p.strength === "clear" ? "clear pattern" : "early sign"}</span>
         )}
       </div>
       <div className="mt-2 flex flex-wrap items-end gap-x-6 gap-y-1">
         <p>
-          <span className="tnum text-[28px] leading-none font-[650] wdth-wide" style={{ color: p.verdict === "mixed" ? "var(--ink)" : verdictColor(p.verdict) }}>
+          <span className="tnum text-[28px] leading-none font-[600] tracking-[-0.02em]" style={{ color: p.verdict === "mixed" ? "var(--ink)" : verdictColor(p.verdict) }}>
             {signed(p.effect_pts, 1)}
           </span>{" "}
           <span className="text-[12.5px] text-ink-3">pts</span>
@@ -99,7 +101,7 @@ function PatternCard({ p, index }: { p: Pattern; index: number }) {
       </div>
       {p.examples[0] && (
         <p className="mt-2 line-clamp-2 font-script text-[12.5px] leading-snug text-ink-2">
-          <span className="tnum mr-1.5 font-ui text-ink-3">{fmtTime(p.examples[0].start)}</span>“{p.examples[0].text}”
+          <span className="tc mr-1.5 text-ink-3">{fmtTime(p.examples[0].start)}</span>“{p.examples[0].text}”
         </p>
       )}
     </motion.article>
@@ -113,7 +115,7 @@ function Avatar({ url, name }: { url: string | null; name: string }) {
   const src = url ? url.replace(/=s\d+[^/]*$/, "") + "=s176-c-k-c0x00ffffff-no-rj" : null;
   if (!src || failed) {
     return (
-      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-brass text-[22px] font-[700] text-brass-bright uppercase">
+      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-[22px] font-[600] text-ink-2 uppercase">
         {name.slice(0, 1)}
       </span>
     );
@@ -125,7 +127,7 @@ function Avatar({ url, name }: { url: string | null; name: string }) {
       alt=""
       referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
-      className="h-14 w-14 shrink-0 rounded-full border-2 border-brass bg-cover-2 object-cover"
+      className="h-14 w-14 shrink-0 rounded-full border border-line bg-surface-2 object-cover"
     />
   );
 }
@@ -140,20 +142,20 @@ function Report({ r }: { r: XRayReport }) {
   const quiet = r.patterns.filter((p) => p.verdict === "mixed");
 
   return (
-    <div className="space-y-10">
-      {/* Cover band */}
+    <div className="flex flex-col gap-10">
+      {/* Channel summary */}
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: EASE }}
-        className="rounded-[10px] bg-cover px-6 py-5 text-cover-ink"
+        className="rounded-panel border border-line bg-surface px-6 py-5"
       >
         <div className="flex flex-wrap items-center gap-4">
           <Avatar url={r.channel.avatar} name={r.channel.channel} />
           <div className="min-w-0 flex-1">
-            <p className="text-[12px] tracking-[0.08em] text-cover-ink-2 uppercase">Channel X-Ray</p>
-            <h2 className="truncate text-[26px] leading-tight font-[680] wdth-wide">{r.channel.channel}</h2>
-            <p className="text-[13px] text-cover-ink-2">
+            <p className="eyebrow">Channel X-Ray</p>
+            <h2 className="truncate text-[24px] leading-tight font-[600] tracking-[-0.02em]">{r.channel.channel}</h2>
+            <p className="text-[13px] text-ink-3">
               {[r.channel.followers ? `${compact(r.channel.followers)} subscribers` : null, CATEGORY_LABEL[r.category] ?? r.category,
                 dates.length ? `${fmtDate(dates[0])} – ${fmtDate(dates[dates.length - 1])}` : null].filter(Boolean).join(" · ")}
             </p>
@@ -162,27 +164,27 @@ function Report({ r }: { r: XRayReport }) {
             href={r.channel.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-[7px] border border-cover-3 px-3 py-1.5 text-[13px] font-[580] text-cover-ink hover:border-brass"
+            className="inline-flex h-(--h-control) items-center gap-1.5 rounded-control border border-line-strong px-3 text-[13px] font-[500] text-ink hover:border-ink-3"
           >
             <Youtube size={15} aria-hidden /> Channel <ArrowUpRight size={13} aria-hidden />
           </a>
         </div>
-        <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+        <dl className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-control border border-line bg-line sm:grid-cols-4">
           {[
             ["Videos measured", `${r.videos.length}`],
             ["With transcripts", `${withText}`],
             ["Typical length", fmtTime(medianLen)],
             ["Prediction vs real curve", r.model_fit === null ? "—" : `${signed(r.model_fit, 2)} shape match`],
           ].map(([k, v]) => (
-            <div key={k} className="border-t border-cover-3 pt-2">
-              <dt className="text-[12px] text-cover-ink-2">{k}</dt>
-              <dd className="tnum text-[22px] font-[650] wdth-wide">
-                {v.endsWith("shape match") ? <>{v.split(" ")[0]} <span className="text-[12px] font-[500] text-cover-ink-2">shape match</span></> : v}
+            <div key={k} className="bg-surface px-3 py-2.5">
+              <dt className="text-[12px] text-ink-3">{k}</dt>
+              <dd className="tnum text-[22px] font-[600] tracking-[-0.02em]">
+                {v.endsWith("shape match") ? <>{v.split(" ")[0]} <span className="text-[12px] font-[500] text-ink-3">shape match</span></> : v}
               </dd>
             </div>
           ))}
         </dl>
-        <p className="mt-3 flex items-center gap-1.5 text-[12px] text-cover-ink-2">
+        <p className="mt-3 flex items-center gap-1.5 text-[12px] text-ink-3">
           {r.source === "dataset" ? <Database size={13} aria-hidden /> : <Youtube size={13} aria-hidden />}
           {r.source === "dataset" ? "From Retent AI’s research dataset" : "Fetched live from YouTube"} · compared with{" "}
           {r.baseline_videos} videos from {r.baseline_channels} other channels
@@ -192,7 +194,7 @@ function Report({ r }: { r: XRayReport }) {
 
       {/* Advice */}
       <section aria-labelledby="advice">
-        <h2 id="advice" className="text-[19px] font-[650]">For the next video</h2>
+        <h2 id="advice" className="text-[18px] font-[600] tracking-[-0.01em]">For the next video</h2>
         {r.advice.length === 0 ? (
           <p className="mt-2 max-w-[80ch] text-[14px] text-ink-2">
             No moment costs this channel viewers consistently across these videos. That’s a good sign. The curve shape below shows
@@ -207,16 +209,16 @@ function Report({ r }: { r: XRayReport }) {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.07, ease: EASE }}
-                className={clsx("flex gap-3 rounded-[8px] border bg-paper-raised p-4", a.keep ? "border-rev-green/40" : "border-rule-strong")}
+                className={clsx("flex gap-3 rounded-panel border bg-surface p-4", a.keep ? "border-good/40" : "border-line")}
               >
                 <span
                   className={clsx("grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-[700]",
-                    a.keep ? "bg-rev-green-paper text-rev-green" : "bg-pen-wash text-pen-text")}
+                    a.keep ? "bg-good-wash text-good" : "bg-drop-wash text-drop-text")}
                 >
                   {a.keep ? <Check size={15} aria-hidden /> : i + 1}
                 </span>
                 <div>
-                  <p className="text-[14.5px] leading-snug font-[560]">{a.text}</p>
+                  <p className="text-[14.5px] leading-snug font-[500]">{a.text}</p>
                   <p className="mt-1 text-[12.5px] text-ink-3">{KIND_SHORT[a.kind]}: {a.evidence}</p>
                 </div>
               </motion.li>
@@ -227,7 +229,7 @@ function Report({ r }: { r: XRayReport }) {
 
       {/* Patterns */}
       <section aria-labelledby="moments">
-        <h2 id="moments" className="text-[19px] font-[650]">What the audience does at each kind of moment</h2>
+        <h2 id="moments" className="text-[18px] font-[600] tracking-[-0.01em]">What the audience does at each kind of moment</h2>
         <p className="mt-1 max-w-[88ch] text-[13.5px] text-ink-2">
           Every occurrence lined up at the moment it starts. The line is the change in YouTube’s Most replayed interest (points on its
           0–100 scale, against the typical shape at that point in a video). The shaded block is the 30 seconds the number is
@@ -240,7 +242,7 @@ function Report({ r }: { r: XRayReport }) {
         )}
         {quiet.length > 0 && (
           <details className="mt-4 group" open={shown.length === 0}>
-            <summary className="cursor-pointer text-[13.5px] font-[600] text-ink-2 hover:text-ink">
+            <summary className="cursor-pointer rounded-chip text-[13.5px] font-[500] text-ink-2 hover:text-ink">
               {quiet.length} more {quiet.length === 1 ? "kind" : "kinds"} of moments without a consistent effect
             </summary>
             <div className="mt-3 grid gap-4 lg:grid-cols-2">
@@ -253,20 +255,20 @@ function Report({ r }: { r: XRayReport }) {
       {/* Shape */}
       <section aria-labelledby="shape" className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
-          <h2 id="shape" className="text-[19px] font-[650]">Where this channel’s videos sag</h2>
+          <h2 id="shape" className="text-[18px] font-[600] tracking-[-0.01em]">Where this channel’s videos sag</h2>
           <p className="mt-1 max-w-[80ch] text-[13.5px] text-ink-2">
             Average Most replayed shape across these videos (violet, with the middle half of videos shaded) against{" "}
             {r.baseline_videos} videos from other channels (dashed). Time is a share of each video, so different lengths line up.
           </p>
-          <div className="mt-3 rounded-[8px] border border-rule bg-paper-raised p-3">
+          <div className="mt-3 rounded-panel border border-line bg-surface p-3">
             <ShapeChart shape={r.shape} />
           </div>
         </div>
-        <div className="space-y-2 self-end">
+        <div className="flex flex-col gap-2 self-end">
           {r.shape.zones.length === 0 && <p className="text-[13.5px] text-ink-2">No stretch sits clearly above or below other channels.</p>}
           {r.shape.zones.map((z) => (
-            <div key={`${z.from_pct}${z.direction}`} className="border-t border-rule-strong pt-2">
-              <p className="text-[14px] font-[620]" style={{ color: z.direction === "below" ? "var(--pen-text)" : "var(--rev-green)" }}>
+            <div key={`${z.from_pct}${z.direction}`} className="border-t border-line-strong pt-2">
+              <p className="text-[14px] font-[600]" style={{ color: z.direction === "below" ? "var(--drop-text)" : "var(--good)" }}>
                 {z.direction === "below" ? "Sags" : "Holds better"} from {z.from_pct}% to {z.to_pct}%
               </p>
               <p className="text-[13px] text-ink-2">
@@ -280,21 +282,21 @@ function Report({ r }: { r: XRayReport }) {
 
       {/* Habits */}
       <section aria-labelledby="habits">
-        <h2 id="habits" className="text-[19px] font-[650]">Habits, measured from the transcripts</h2>
-        <div className="mt-3 overflow-x-auto rounded-[8px] border border-rule bg-paper-raised">
+        <h2 id="habits" className="text-[18px] font-[600] tracking-[-0.01em]">Habits, measured from the transcripts</h2>
+        <div className="mt-3 overflow-x-auto rounded-panel border border-line bg-surface">
           <table className="w-full min-w-[520px] text-[13.5px]">
             <thead>
-              <tr className="border-b border-rule text-left text-[12px] text-ink-3">
-                <th className="px-4 py-2 font-[560]">Habit</th>
-                <th className="px-4 py-2 text-right font-[560]">{r.channel.channel}</th>
-                <th className="px-4 py-2 text-right font-[560]">Other channels</th>
+              <tr className="border-b border-line text-left text-[12px] text-ink-3">
+                <th className="eyebrow px-4 py-2 font-[500]">Habit</th>
+                <th className="px-4 py-2 text-right font-[500]">{r.channel.channel}</th>
+                <th className="px-4 py-2 text-right font-[500]">Other channels</th>
               </tr>
             </thead>
             <tbody>
               {r.habits.map((h) => (
-                <tr key={h.key} className="border-b border-rule last:border-0">
+                <tr key={h.key} className="border-b border-line last:border-0">
                   <td className="px-4 py-2 text-ink-2">{h.label}</td>
-                  <td className="tnum px-4 py-2 text-right font-[620]">{habitValue(h.channel, h.unit)}</td>
+                  <td className="tnum px-4 py-2 text-right font-[600]">{habitValue(h.channel, h.unit)}</td>
                   <td className="tnum px-4 py-2 text-right text-ink-2">{habitValue(h.typical, h.unit)}</td>
                 </tr>
               ))}
@@ -305,16 +307,16 @@ function Report({ r }: { r: XRayReport }) {
 
       {/* Videos */}
       <section aria-labelledby="videos">
-        <h2 id="videos" className="text-[19px] font-[650]">The videos</h2>
+        <h2 id="videos" className="text-[18px] font-[600] tracking-[-0.01em]">The videos</h2>
         <p className="mt-1 text-[13.5px] text-ink-2">
           Each video’s real Most replayed curve, with its moments marked underneath (red: a kind that costs this channel viewers,
           green: one that holds them). Hover a mark to read the line.
         </p>
-        <ul className="mt-3 divide-y divide-rule rounded-[8px] border border-rule bg-paper-raised">
+        <ul className="mt-3 divide-y divide-line rounded-panel border border-line bg-surface">
           {r.videos.map((v) => (
             <li key={v.id} className="grid items-center gap-4 px-4 py-3 md:grid-cols-[120px_minmax(0,1.1fr)_minmax(0,1fr)_auto]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`} alt="" className="hidden aspect-video w-[120px] rounded-[4px] object-cover md:block" />
+              <img src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`} alt="" className="hidden aspect-video w-[120px] rounded-chip object-cover md:block" />
               <div className="min-w-0">
                 <p className="line-clamp-2 text-[14px] leading-snug font-[600]">{v.title}</p>
                 <p className="tnum mt-0.5 text-[12px] text-ink-3">
@@ -325,12 +327,12 @@ function Report({ r }: { r: XRayReport }) {
               <VideoSpark heat={v.heat} moments={v.moments} duration={v.duration} colorOf={colorOf} />
               <div className="flex items-center gap-3 text-[12.5px]">
                 {v.fit !== null && (
-                  <span className="tnum text-ink-3" title="How well Retent AI's prediction matched this video's real curve (Spearman)">
+                  <span className="tc text-ink-3" title="How well Retent AI's prediction matched this video's real curve (Spearman)">
                     model {signed(v.fit, 2)}
                   </span>
                 )}
                 {v.analysis_id && (
-                  <Link href={`/a/${v.analysis_id}`} className="inline-flex items-center gap-1 font-[600] text-ink hover:text-pen-text">
+                  <Link href={`/a/${v.analysis_id}`} className="inline-flex items-center gap-1 rounded-chip font-[500] text-ink hover:text-accent">
                     Open <ArrowUpRight size={13} aria-hidden />
                   </Link>
                 )}
@@ -343,8 +345,8 @@ function Report({ r }: { r: XRayReport }) {
         </ul>
       </section>
 
-      <section aria-labelledby="method" className="max-w-[92ch] border-t border-rule pt-5 text-[13px] text-ink-2">
-        <h2 id="method" className="text-[14px] font-[640] text-ink">How to read this</h2>
+      <section aria-labelledby="method" className="max-w-[92ch] border-t border-line pt-5 text-[13px] text-ink-2">
+        <h2 id="method" className="text-[14px] font-[600] text-ink">How to read this</h2>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
             The real curve is YouTube’s public “Most replayed” graph: relative interest within each video, not the absolute retention
@@ -408,64 +410,49 @@ function XRayPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <header className="border-b border-rule px-5 pt-7 pb-5 md:px-8">
-        <h1 className="flex items-center gap-2 text-[26px] leading-tight font-[650] wdth-wide">
-          <ScanSearch size={24} strokeWidth={1.8} aria-hidden /> Channel X-Ray
-        </h1>
-        <p className="mt-1 max-w-[84ch] text-[14px] text-ink-2">
-          One video’s drop can be bad luck. The same drop in eight videos is a habit. X-Ray reads a channel’s recent long videos,
-          finds every sponsor read, subscribe ask, intro, tease and slow stretch, and checks what YouTube’s real audience curve did at
-          each one, compared with other channels.
-        </p>
-      </header>
+      <PageHeader
+        title="Channel X-Ray"
+        description="One video’s drop can be bad luck. The same drop in eight videos is a habit. X-Ray reads a channel’s recent long videos, finds every sponsor read, subscribe ask, intro, tease and slow stretch, and checks what YouTube’s real audience curve did at each one, compared with other channels."
+      />
 
-      <div className="space-y-8 px-5 py-6 md:px-8">
-        <section aria-label="Choose a channel" className="max-w-[1080px] rounded-[8px] border border-rule bg-paper-raised p-4">
-          <label className="block">
-            <span className="mb-1.5 block text-[13.5px] font-[620]">Channel link, @handle, or any video from the channel</span>
-            <div className="flex flex-wrap gap-3">
-              <input
+      <div className="flex flex-col gap-8 px-8 py-6 compact:px-6">
+        <Panel aria-label="Choose a channel" className="max-w-[1080px]">
+          <label htmlFor="xray-channel" className="mb-1.5 block text-[13px] font-[600]">
+            Channel link, @handle, or any video from the channel
+          </label>
+          <div className="flex flex-wrap gap-3">
+            <div className="min-w-0 flex-1 basis-[280px]">
+              <Input
+                id="xray-channel"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && canRun && start(input.trim(), { category })}
                 placeholder="@mkbhd  or  https://www.youtube.com/@channel"
-                className="min-w-0 flex-1 basis-[280px] rounded-[7px] border border-rule-strong bg-paper px-3 py-2 text-[14.5px] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 focus:border-ink focus:shadow-[0_0_0_3px_var(--rev-blue-paper)]"
               />
-              <div role="radiogroup" aria-label="Category" className="inline-flex rounded-[7px] border border-rule-strong bg-paper p-0.5">
-                {(["tech", "education", "vlog"] as const).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    role="radio"
-                    aria-checked={category === c}
-                    onClick={() => setCategory(c)}
-                    className={clsx("rounded-[5px] px-3 py-1.5 text-[13px] font-[560] capitalize transition-colors",
-                      category === c ? "bg-ink text-paper" : "text-ink-2 hover:bg-paper-sunk")}
-                  >
-                    {c === "tech" ? "Tech review" : c}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => start(input.trim(), { category })}
-                disabled={!canRun}
-                className="inline-flex items-center gap-2 rounded-[8px] bg-ink px-5 py-2 text-[14.5px] font-[620] text-paper hover:bg-primary-hover disabled:opacity-40"
-              >
-                {running ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <ScanSearch size={16} aria-hidden />}
-                X-Ray channel
-              </button>
             </div>
-            <span className="mt-1.5 block text-[12px] text-ink-3">
-              Takes 1–3 minutes live: YouTube shows the Most replayed curve only on videos a few weeks old, and transcripts may need
-              Whisper. Channels below are already in the dataset and open instantly.
-            </span>
-          </label>
+            <Segmented<"tech" | "education" | "vlog">
+              label="Category"
+              value={category}
+              onChange={setCategory}
+              options={[
+                { value: "tech", label: "Tech review" },
+                { value: "education", label: "Education" },
+                { value: "vlog", label: "Vlog" },
+              ]}
+            />
+            <Button onClick={() => start(input.trim(), { category })} disabled={!canRun} loading={running}>
+              {!running && <ScanSearch size={15} aria-hidden />} X-Ray channel
+            </Button>
+          </div>
+          <p className="mt-2 text-[12px] text-ink-3">
+            Takes 1–3 minutes live: YouTube shows the Most replayed curve only on videos a few weeks old, and transcripts may need
+            Whisper. Channels below are already in the dataset and open instantly.
+          </p>
 
           {channels && channels.length > 0 && (
             <div className="mt-4">
-              <p className="mb-2 flex items-center gap-1.5 text-[12.5px] font-[600] text-ink-2">
-                <Database size={13} aria-hidden /> In the research dataset
+              <p className="eyebrow mb-2 flex items-center gap-1.5">
+                <Database size={12} aria-hidden /> In the research dataset
               </p>
               <div className="flex flex-wrap gap-2">
                 {channels.slice(0, 10).map((c) => (
@@ -474,7 +461,7 @@ function XRayPage() {
                     type="button"
                     disabled={running}
                     onClick={() => start(c.channel_id)}
-                    className="rounded-full border border-rule-strong bg-paper px-3 py-1 text-[13px] font-[560] hover:border-ink/50 disabled:opacity-40"
+                    className="h-7 rounded-control border border-line-strong bg-surface px-2.5 text-[13px] font-[500] hover:border-ink-3 disabled:opacity-40"
                   >
                     {c.channel} <span className="tnum text-ink-3">· {c.transcripts}</span>
                   </button>
@@ -485,46 +472,58 @@ function XRayPage() {
 
           {reports && reports.length > 0 && (
             <div className="mt-4">
-              <p className="mb-2 text-[12.5px] font-[600] text-ink-2">Recent X-Rays</p>
+              <p className="eyebrow mb-2">Recent X-Rays</p>
               <div className="flex flex-wrap gap-2">
                 {reports.slice(0, 8).map((x) => (
                   <Link
                     key={x.id}
                     href={`/xray?r=${x.id}`}
                     scroll={false}
-                    className={clsx("rounded-full border px-3 py-1 text-[13px] font-[560]",
-                      x.id === reportId ? "border-ink bg-ink text-paper" : "border-rule-strong hover:border-ink/50")}
+                    aria-current={x.id === reportId ? "page" : undefined}
+                    className={clsx("inline-flex h-7 items-center rounded-control border px-2.5 text-[13px] font-[500]",
+                      x.id === reportId ? "border-transparent bg-primary text-primary-fg" : "border-line-strong hover:border-ink-3")}
                   >
                     {x.channel}
-                    {x.hurts > 0 && <span className={clsx("ml-1.5 tnum", x.id === reportId ? "text-paper/70" : "text-pen-text")}>{x.hurts} costly</span>}
+                    {x.hurts > 0 && <span className={clsx("ml-1.5 tnum", x.id === reportId ? "opacity-70" : "text-drop-text")}>{x.hurts} costly</span>}
                   </Link>
                 ))}
               </div>
             </div>
           )}
-        </section>
+        </Panel>
 
         {(running || error) && (
-          <section aria-live="polite" className="max-w-[1080px] rounded-[8px] border border-rule bg-paper-raised p-4">
-            <ol className="space-y-1 text-[13.5px]">
+          <Panel aria-live="polite" className="max-w-[1080px]">
+            <ol className="flex flex-col gap-1 text-[13.5px]">
               {log.slice(-7).map((m, i, arr) => (
                 <li key={`${m}${i}`} className={clsx("flex items-center gap-2", i === arr.length - 1 && running ? "font-[600] text-ink" : "text-ink-3")}>
-                  {i === arr.length - 1 && running ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Check size={14} aria-hidden />}
+                  {i === arr.length - 1 && running ? <Spinner className="text-accent" /> : <Check size={14} className="text-good" aria-hidden />}
                   {m}
                 </li>
               ))}
             </ol>
-            {error && <p className="mt-2 text-[13.5px] text-pen-text">{error}</p>}
-          </section>
+            {error && (
+              <p role="alert" className="mt-2 text-[13.5px] text-drop-text">
+                {error}
+              </p>
+            )}
+          </Panel>
         )}
 
         {report.data && !running && <Report r={report.data} />}
-        {report.isLoading && <p className="text-[13.5px] text-ink-3">Loading the X-Ray…</p>}
+        {report.isLoading && (
+          <p className="flex items-center gap-2.5 text-[13.5px] text-ink-3">
+            <Spinner /> Loading the X-Ray…
+          </p>
+        )}
         {!reportId && !running && (
-          <div className="grid min-h-[220px] max-w-[1080px] place-items-center rounded-[8px] border border-dashed border-rule-strong p-8 text-center">
-            <div className="max-w-md">
-              <p className="text-[16px] font-[620]">Pick a channel to see its habits</p>
-              <p className="mt-1 text-[13.5px] text-ink-2">
+          <div className="grid min-h-[220px] max-w-[1080px] place-items-center rounded-panel border border-dashed border-line-strong p-8 text-center">
+            <div className="flex max-w-md flex-col items-center gap-2">
+              <span className="mb-1 grid size-11 place-items-center rounded-full bg-surface-2 text-ink-3">
+                <ScanSearch size={19} aria-hidden />
+              </span>
+              <p className="text-[16px] font-[600]">Pick a channel to see its habits</p>
+              <p className="text-[13.5px] text-ink-2">
                 Try one from the dataset for an instant result, or paste any channel with a few 5–25 minute videos.
               </p>
             </div>

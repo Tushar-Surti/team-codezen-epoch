@@ -194,7 +194,7 @@ export default function NewAnalysisPage() {
                     about <span className="tc">{fmtTime(secs)}</span> spoken
                   </span>
                   {words > 0 && !inScope && (
-                    <Badge tone="warn" className="h-5 text-[11px]">
+                    <Badge tone="warn" size="sm">
                       {secs < 300 ? "Under 5 min: results are indicative" : "Over 15 min: results are indicative"}
                     </Badge>
                   )}
@@ -207,7 +207,7 @@ export default function NewAnalysisPage() {
               </div>
             </Panel>
           ) : mode === "url" ? (
-            <Panel className="flex flex-1 flex-col justify-center gap-4 p-8">
+            <Panel padded={false} className="flex flex-1 flex-col justify-center gap-4 p-8">
               <Field label="Public YouTube link" help="Works best on 5–15 minute videos. About 20–40 seconds per video.">
                 <Input
                   value={url}
@@ -215,7 +215,7 @@ export default function NewAnalysisPage() {
                   onKeyDown={(e) => e.key === "Enter" && canRun && run()}
                   placeholder="https://www.youtube.com/watch?v=…"
                   inputMode="url"
-                  className="h-(--h-control-lg) text-[15px]"
+                  inputSize="lg"
                 />
               </Field>
               <p className="max-w-[64ch] text-[13.5px] leading-relaxed text-ink-2">
