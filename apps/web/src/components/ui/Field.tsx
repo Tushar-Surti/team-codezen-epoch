@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { ChevronDown } from "lucide-react";
 import { type ComponentProps, type ReactNode, createContext, useContext, useId } from "react";
 
 type FieldCtx = { id: string; describedBy?: string; invalid: boolean };
@@ -56,6 +57,18 @@ function useFieldProps(id?: string) {
 export function Input({ className, id, ...props }: ComponentProps<"input">) {
   const field = useFieldProps(id);
   return <input {...field} {...props} className={clsx(CONTROL, "h-(--h-input) px-3 text-[14px]", className)} />;
+}
+
+export function Select({ className, id, children, ...props }: ComponentProps<"select">) {
+  const field = useFieldProps(id);
+  return (
+    <div className="relative">
+      <select {...field} {...props} className={clsx(CONTROL, "h-(--h-input) appearance-none truncate pr-9 pl-3 text-[14px]", className)}>
+        {children}
+      </select>
+      <ChevronDown size={15} aria-hidden className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-ink-3" />
+    </div>
+  );
 }
 
 export function Textarea({ className, id, ...props }: ComponentProps<"textarea">) {
