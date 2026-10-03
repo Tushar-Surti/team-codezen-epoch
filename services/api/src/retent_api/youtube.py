@@ -53,7 +53,7 @@ def fetch_info(vid: str) -> dict:
     return info
 
 
-def transcript(info: dict, on_whisper=None) -> tuple[list[dict], str, str | None]:
+def transcript(info: dict, on_whisper=None, allow_whisper: bool = True) -> tuple[list[dict], str, str | None]:
     """Returns (segments, source, language). Source is "manual", "auto" or "asr"."""
     vid = info["id"]
     lang = spoken_language(info)
@@ -70,6 +70,8 @@ def transcript(info: dict, on_whisper=None) -> tuple[list[dict], str, str | None
             continue
         if len(segs) >= 20:
             return segs, picked[0], cand
+    if not allow_whisper:
+        raise YouTubeError("No captions available and transcription is switched off for this request.")
     if not groq.available():
         raise YouTubeError("YouTube is blocking captions on this connection and no GROQ_API_KEY is set for Whisper.")
     if on_whisper:

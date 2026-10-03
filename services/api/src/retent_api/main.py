@@ -33,7 +33,7 @@ load_baselines(ROOT / "models" / "baselines.json")
 
 app = FastAPI(title=f"{PRODUCT_NAME} API", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-store = Store()
+store = Store(extra_dirs=(ROOT / "data" / "xray" / "analyses",))
 jobs = Jobs()
 
 
@@ -416,6 +416,42 @@ async def job_events(job_id: str) -> StreamingResponse:
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/xray/channels")
+def xray_channels() -> list[dict]:
+    """Channels already in the research dataset (instant X-Ray, no YouTube calls)."""
+    from retent_api import xray
+
+    return xray.local_channels()
+
+
+@app.get("/api/xray")
+def xray_list() -> list[dict]:
+    from retent_api import xray
+
+    return xray.list_reports()
+
+
+@app.get("/api/xray/{report_id}")
+def xray_report(report_id: str) -> dict:
+    from retent_api import xray
+
+    if not report_id.isalnum() or not (r := xray.get_report(report_id)):
+        raise HTTPException(404, "X-Ray not found")
+    return r
+
+
+@app.post("/api/xray", response_model=JobAccepted)
+async def xray_start(body: dict) -> JobAccepted:
+    from retent_api import xray
+
+    if not str(body.get("channel") or "").strip():
+        raise HTTPException(422, "Send a channel link, @handle or channel id.")
+    report_id = uuid.uuid4().hex[:12]
+    job = jobs.create(report_id)
+    asyncio.create_task(xray.run(job, body, report_id))
+    return JobAccepted(job_id=job.id, analysis_id=report_id)
 
 
 @app.post("/api/hooks")

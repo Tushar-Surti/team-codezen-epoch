@@ -13,13 +13,15 @@ FIXTURES = ROOT / "fixtures" / "analyses"
 
 
 class Store:
-    def __init__(self, data_dir: Path = DATA, fixtures_dir: Path = FIXTURES):
+    def __init__(self, data_dir: Path = DATA, fixtures_dir: Path = FIXTURES, extra_dirs: tuple[Path, ...] = ()):
+        """`extra_dirs` hold analyses that can be opened but aren't listed as projects (Channel X-Ray videos)."""
         self.data_dir = data_dir
         self.fixtures_dir = fixtures_dir
+        self.extra_dirs = extra_dirs
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
     def _path(self, analysis_id: str) -> Path | None:
-        for base in (self.data_dir, self.fixtures_dir):
+        for base in (self.data_dir, self.fixtures_dir, *self.extra_dirs):
             p = base / f"{analysis_id}.json"
             if p.exists():
                 return p
