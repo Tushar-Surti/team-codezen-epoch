@@ -11,12 +11,15 @@ export function Tabs<T extends string>({
   onChange,
   items,
   label,
+  bordered = true,
   className,
 }: {
   value: T;
   onChange: (v: T) => void;
   items: readonly TabItem<T>[];
   label: string;
+  /** Draw the baseline under the tabs. Turn off when the container already draws one. */
+  bordered?: boolean;
   className?: string;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -31,7 +34,7 @@ export function Tabs<T extends string>({
   }
 
   return (
-    <div role="tablist" aria-label={label} className={clsx("flex flex-wrap gap-1 border-b border-line", className)}>
+    <div role="tablist" aria-label={label} className={clsx("flex flex-wrap gap-1", bordered && "border-b border-line", className)}>
       {items.map((t, i) => {
         const on = t.value === value;
         return (

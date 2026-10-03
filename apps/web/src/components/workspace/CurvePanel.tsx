@@ -124,7 +124,7 @@ export function CurvePanel({ analysis, focusFlag }: Props) {
   const payoff = analysis.metrics.payoff_time;
 
   return (
-    <figure className="relative h-full min-h-[220px]" aria-labelledby="curve-title">
+    <figure className="relative h-full min-h-[140px]" aria-labelledby="curve-title">
       <figcaption className="sr-only" id="curve-title">
         Predicted retention: {pct(analysis.metrics.intro_retention)} still watching at 0:30, average {pct(analysis.metrics.apv)} viewed.
         The full curve is also available as a table below the chart.

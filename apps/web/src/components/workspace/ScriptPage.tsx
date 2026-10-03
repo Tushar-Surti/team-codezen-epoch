@@ -78,6 +78,29 @@ function buildLines(analysis: Analysis, sim: Simulation | null): Line[] {
   return out;
 }
 
+/** Which draft is showing, how its timing was made, and the changed-line key. Lives in the pane's tab bar. */
+export function ScriptLegend({ analysis, draftKey }: { analysis: Analysis; draftKey: RevisionKey | null }) {
+  const rev = draftKey ? revision(draftKey) : null;
+  return (
+    <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-3">
+      <span>
+        <span className="font-[500] text-ink-2">{rev ? `${rev.name} revision` : "White draft"}</span>
+        {" · "}
+        {analysis.sentences[0]?.timing === "estimated" ? "timing estimated from speaking rate" : "timing from the video"}
+      </span>
+      {rev && (
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden className="inline-block h-3 w-5 rounded-[2px]" style={{ background: rev.paper }} />
+          Changed lines
+          <span className="font-script text-[14px] leading-none" style={{ color: rev.ink }}>
+            *
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function ScriptPage({ analysis, sim, draftKey }: { analysis: Analysis; sim: Simulation | null; draftKey: RevisionKey | null }) {
   const { selectedFlagId, selectFlag, playhead, setPlayhead } = useWorkspace();
   const lines = useMemo(() => buildLines(analysis, sim), [analysis, sim]);
@@ -102,20 +125,6 @@ export function ScriptPage({ analysis, sim, draftKey }: { analysis: Analysis; si
 
   return (
     <div ref={containerRef} className="w-full">
-      <header className="sticky top-0 z-10 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line bg-surface px-5 py-3">
-        <h2 className="flex flex-wrap items-baseline gap-x-2.5">
-          <span className="panel-title">{rev ? `${rev.name} revision` : "White draft"}</span>
-          <span className="text-[12px] text-ink-3">
-            {analysis.sentences[0]?.timing === "estimated" ? "Timing estimated from speaking rate" : "Timing from the video"}
-          </span>
-        </h2>
-        {rev && (
-          <span className="flex items-center gap-2 text-[12px] text-ink-3">
-            <span aria-hidden className="inline-block h-3 w-5 rounded-[2px]" style={{ background: rev.paper }} /> Changed lines
-            <span className="font-script text-[14px]" style={{ color: rev.ink }}>*</span>
-          </span>
-        )}
-      </header>
       <ol className="mx-auto max-w-[920px] py-3">
         {lines.map((l, i) => {
           if (l.kind === "omitted") {

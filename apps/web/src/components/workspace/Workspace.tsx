@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Rows3, ScrollText, Table2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { Button, Panel, Segmented, Spinner } from "@/components/ui";
+import { Badge, Button, Panel, Segmented, Spinner, Tabs } from "@/components/ui";
 import { api } from "@/lib/api";
 import { revision } from "@/lib/revisions";
+import { usePersisted } from "@/lib/usePersisted";
 import { useWorkspace } from "@/lib/workspace-store";
 
 import { CurvePanel } from "./CurvePanel";
@@ -18,7 +19,8 @@ import { MetricsLedger } from "./MetricsLedger";
 import { ProjectBar } from "./ProjectBar";
 import { RoughCutPlayer } from "./RoughCutPlayer";
 import { YouTubeCheck } from "./YouTubeCheck";
-import { ScriptPage } from "./ScriptPage";
+import { ScriptLegend, ScriptPage } from "./ScriptPage";
+import { SplitHandle } from "./SplitHandle";
 
 /** Re-simulate the working revision whenever its set of fixes changes. */
 function useDraftSimulation(analysisId: string) {
@@ -53,6 +55,12 @@ function LegendSwatch({ color, band }: { color: string; band?: boolean }) {
   );
 }
 
+// Share of the left column given to the curve pane on wide screens; the script pane takes the rest.
+const SPLIT_MIN = 30;
+const SPLIT_MAX = 78;
+const SPLIT_DEFAULT = 56;
+const isSplit = (v: unknown): v is number => typeof v === "number" && v >= SPLIT_MIN && v <= SPLIT_MAX;
+
 export function Workspace({ id }: { id: string }) {
   const { data: analysis, error, isLoading, refetch, isRefetching } = useQuery({ queryKey: ["analysis", id], queryFn: () => api.get(id) });
   const { data: actual } = useQuery({
@@ -62,6 +70,10 @@ export function Workspace({ id }: { id: string }) {
     retry: false,
   });
   const [view, setView] = useState<"retention" | "youtube">("retention");
+  const [pane, setPane] = useState<"script" | "data">("script");
+  const [split, setSplit, saveSplit] = usePersisted("retent-split", SPLIT_DEFAULT, isSplit);
+  const [lanes, setLanes, saveLanes] = usePersisted("retent-lanes", true, (v): v is boolean => typeof v === "boolean");
+  const column = useRef<HTMLDivElement>(null);
   const { reset, selectedFlagId, drafts, activeDraft } = useWorkspace();
   const exportSheet = useExportSheet();
 
@@ -111,14 +123,27 @@ export function Workspace({ id }: { id: string }) {
     <div className="flex h-full min-w-0 flex-col">
       <ProjectBar analysis={analysis} onExport={exportSheet.open} />
       <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px]">
-        {/* Curve and lanes stay pinned; only the script scrolls, so the drop you're reading stays in view. */}
-        <div className="flex min-h-0 min-w-0 flex-col gap-(--gap-ws) overflow-y-auto p-(--gap-ws) xl:overflow-hidden">
-          <Panel className="shrink-0" aria-labelledby="curve-heading">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-              <div className="flex items-center gap-3">
+        {/* Wide screens: two panes split by a draggable handle, each scrolling on its own (like an NLE).
+            Narrow screens: the panes stack and the column scrolls. */}
+        <div
+          ref={column}
+          className="flex min-h-0 min-w-0 flex-col gap-(--gap-ws) overflow-y-auto p-(--gap-ws) xl:gap-0 xl:overflow-hidden"
+        >
+          <Panel
+            className="flex shrink-0 flex-col xl:h-(--split) xl:min-h-min"
+            style={{ "--split": `${split}%` } as React.CSSProperties}
+            aria-labelledby="curve-heading"
+          >
+            <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div className="flex items-center gap-2.5">
                 <h2 id="curve-heading" className="panel-title">
                   {view === "youtube" ? "Blind check against YouTube" : "Predicted retention"}
                 </h2>
+                {uncalibrated && view === "retention" && (
+                  <Badge tone="warn" size="xs" title={uncalibrated.message}>
+                    Uncalibrated
+                  </Badge>
+                )}
                 {actual && (
                   <Segmented
                     label="Curve view"
@@ -132,45 +157,99 @@ export function Workspace({ id }: { id: string }) {
                   />
                 )}
               </div>
-              {view === "retention" && (
-                <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-3">
-                  <span className="flex items-center gap-1.5">
-                    <LegendSwatch color="var(--ink)" />
-                    White draft
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <LegendSwatch color="color-mix(in srgb, var(--ink) 10%, transparent)" band />
-                    Likely range
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <LegendSwatch color="var(--drop-wash-strong)" band />
-                    Drop
-                  </span>
-                  {draft?.simulation && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                {view === "retention" && (
+                  <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-3">
                     <span className="flex items-center gap-1.5">
-                      <LegendSwatch color={revision(draft.key).ink} />
-                      {revision(draft.key).name} draft
+                      <LegendSwatch color="var(--ink)" />
+                      White draft
                     </span>
-                  )}
-                </p>
-              )}
+                    <span className="flex items-center gap-1.5">
+                      <LegendSwatch color="color-mix(in srgb, var(--ink) 10%, transparent)" band />
+                      Likely range
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <LegendSwatch color="var(--drop-wash-strong)" band />
+                      Drop
+                    </span>
+                    {draft?.simulation && (
+                      <span className="flex items-center gap-1.5">
+                        <LegendSwatch color={revision(draft.key).ink} />
+                        {revision(draft.key).name} draft
+                      </span>
+                    )}
+                  </p>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-pressed={lanes}
+                  title={lanes ? "Hide the timeline lanes" : "Show the timeline lanes"}
+                  onClick={() => {
+                    setLanes(!lanes);
+                    saveLanes(!lanes);
+                  }}
+                  className="aria-pressed:bg-surface-2 aria-pressed:text-ink"
+                >
+                  <Rows3 size={14} aria-hidden /> Lanes
+                </Button>
+              </div>
             </div>
-            <div className="h-[clamp(220px,30vh,330px)]">
+            <div className="h-[clamp(220px,30vh,330px)] xl:h-auto xl:min-h-[150px] xl:flex-1">
               {view === "youtube" && actual ? (
                 <YouTubeCheck analysis={analysis} actual={actual} />
               ) : (
                 <CurvePanel analysis={analysis} focusFlag={focusFlag} />
               )}
             </div>
-            {uncalibrated && <p className="mt-1 max-w-[80ch] text-[12px] text-ink-3">{uncalibrated.message}</p>}
-            <div className="mt-3">
-              <Lanes analysis={analysis} />
-            </div>
-            <CurveTable analysis={analysis} sim={sim} draftKey={draft?.key ?? null} />
+            {lanes && (
+              <div className="mt-3 shrink-0">
+                <Lanes analysis={analysis} />
+              </div>
+            )}
           </Panel>
 
-          <Panel padded={false} className="min-h-[360px] xl:min-h-0 xl:flex-1 xl:overflow-y-auto" aria-label="Script">
-            <ScriptPage analysis={analysis} sim={sim} draftKey={draft?.key ?? null} />
+          <SplitHandle
+            label="Resize the curve and script panes"
+            value={split}
+            onChange={setSplit}
+            onCommit={saveSplit}
+            container={column}
+            min={SPLIT_MIN}
+            max={SPLIT_MAX}
+            reset={SPLIT_DEFAULT}
+            className="hidden h-[max(var(--gap-ws),12px)] xl:flex"
+          />
+
+          <Panel padded={false} className="flex shrink-0 flex-col xl:min-h-0 xl:flex-1 xl:shrink" aria-label="Script and curve data">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-line pr-4 pl-2">
+              <Tabs
+                label="Lower pane"
+                bordered={false}
+                value={pane}
+                onChange={setPane}
+                items={[
+                  { value: "script", label: "Script", icon: <ScrollText size={15} aria-hidden />, controls: "pane-script" },
+                  { value: "data", label: "Curve data", icon: <Table2 size={15} aria-hidden />, controls: "pane-data" },
+                ]}
+              />
+              {pane === "script" ? (
+                <ScriptLegend analysis={analysis} draftKey={draft?.key ?? null} />
+              ) : (
+                <span className="text-[12px] text-ink-3">Click a row to move the playhead</span>
+              )}
+            </div>
+            <div
+              id={pane === "script" ? "pane-script" : "pane-data"}
+              role="tabpanel"
+              className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto"
+            >
+              {pane === "script" ? (
+                <ScriptPage analysis={analysis} sim={sim} draftKey={draft?.key ?? null} />
+              ) : (
+                <CurveTable analysis={analysis} sim={sim} draftKey={draft?.key ?? null} note={uncalibrated?.message} />
+              )}
+            </div>
           </Panel>
         </div>
 
