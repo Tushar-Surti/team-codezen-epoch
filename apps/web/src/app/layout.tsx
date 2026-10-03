@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Sans_Devanagari, Noto_Sans_Devanagari } from "next/font/google";
 
-import { THEME_SCRIPT } from "@/lib/theme-script";
+import { PREPAINT_SCRIPT } from "@/lib/prepaint";
 
 import { Providers } from "./providers";
 import "./globals.css";
@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={fontVars} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: PREPAINT_SCRIPT }} />
       </head>
       <body>
         <Providers>{children}</Providers>

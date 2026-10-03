@@ -5,4 +5,4 @@ export { Panel, PanelHeader } from "./Panel";
 export { Segmented, type SegmentedOption } from "./Segmented";
 export { Spinner } from "./Spinner";
 export { Tabs, type TabItem } from "./Tabs";
-export { ThemeToggle } from "./ThemeToggle";
+export { ThemeCycleButton, ThemeToggle } from "./ThemeToggle";

@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-import { DARK_QUERY as QUERY, THEME_KEY as KEY } from "./theme-script";
+import { DARK_QUERY as QUERY, THEME_KEY as KEY } from "./prepaint";
 
 export type ThemePref = "system" | "light" | "dark";
 export type Theme = "light" | "dark";

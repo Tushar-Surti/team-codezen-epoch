@@ -17,9 +17,11 @@ export function Badge({
   severity,
   dot,
   icon,
+  title,
   className,
   children,
 }: {
+  title?: string;
   tone?: BadgeTone;
   severity?: 1 | 2 | 3 | 4 | 5;
   /** Any CSS color for a leading dot. */
@@ -31,6 +33,7 @@ export function Badge({
   const dotColor = severity ? `var(--sev-${severity})` : dot;
   return (
     <span
+      title={title}
       className={clsx(
         "inline-flex h-[22px] items-center gap-1.5 rounded-chip border px-2 text-[12px] leading-none font-[500] whitespace-nowrap",
         TONE[tone],

@@ -1,71 +1,195 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { FilePlus2 } from "lucide-react";
+import { AlertTriangle, FilePlus2, FolderOpen } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
-import { api } from "@/lib/api";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { Badge, Button, Panel, Segmented } from "@/components/ui";
+import { type AnalysisSummary, api } from "@/lib/api";
 import { CATEGORY_LABEL, LANGUAGE_LABEL, MODE_LABEL, fmtTime, pct } from "@/lib/format";
 
+const SAMPLE = "sample-hinglish-tech";
+type Filter = "all" | "user" | "fixture";
+
+/** A value with a thin bar behind it, so a column of percentages scans at a glance. */
+function Meter({ value }: { value: number }) {
+  return (
+    <span className="inline-flex items-center justify-end gap-2.5">
+      <span aria-hidden className="h-[3px] w-10 overflow-hidden rounded-full bg-surface-2">
+        <span className="block h-full rounded-full bg-ink-3" style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%` }} />
+      </span>
+      <span className="tnum w-10 text-right">{pct(value)}</span>
+    </span>
+  );
+}
+
+function Row({ r }: { r: AnalysisSummary }) {
+  return (
+    <tr className="group border-b border-line transition-colors duration-150 last:border-b-0 hover:bg-surface-2/60">
+      <td className="max-w-[440px] py-3 pr-4 pl-5">
+        <Link href={`/a/${r.id}`} className="block truncate font-[500] text-ink group-hover:underline" title={r.title}>
+          {r.title}
+        </Link>
+        <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-3">
+          {MODE_LABEL[r.input_mode] ?? r.input_mode}
+          {r.origin === "fixture" && <Badge className="h-[18px] px-1.5 text-[11px]">Sample</Badge>}
+          {r.synthetic && (
+            <Badge tone="warn" className="h-[18px] px-1.5 text-[11px]">
+              Development data
+            </Badge>
+          )}
+          {r.has_actual && (
+            <Badge tone="ai" className="h-[18px] px-1.5 text-[11px]">
+              Has YouTube curve
+            </Badge>
+          )}
+        </span>
+      </td>
+      <td className="py-3 pr-4 whitespace-nowrap text-ink-2">
+        {CATEGORY_LABEL[r.category] ?? r.category}
+        <span className="block text-[12px] text-ink-3">{LANGUAGE_LABEL[r.language] ?? r.language}</span>
+      </td>
+      <td className="tc py-3 pr-4 text-right whitespace-nowrap text-ink-2">{fmtTime(r.duration_seconds)}</td>
+      <td className="py-3 pr-4 text-right whitespace-nowrap">
+        <Meter value={r.intro_retention} />
+      </td>
+      <td className="py-3 pr-4 text-right whitespace-nowrap">
+        <Meter value={r.apv} />
+      </td>
+      <td className="max-w-[300px] py-3 pr-5">
+        {r.worst_flag ? (
+          <span className="flex items-center gap-2">
+            <span aria-hidden className="size-[7px] shrink-0 rounded-full bg-drop" />
+            <span className="truncate text-drop-text" title={r.worst_flag}>
+              {r.worst_flag}
+            </span>
+          </span>
+        ) : (
+          <span className="text-ink-3">None above noise</span>
+        )}
+        {r.flags > 1 && <span className="mt-0.5 block pl-[15px] text-[12px] text-ink-3">{r.flags - 1} more flagged</span>}
+      </td>
+    </tr>
+  );
+}
+
+function SkeletonRows() {
+  return (
+    <>
+      {Array.from({ length: 5 }, (_, i) => (
+        <tr key={i} className="border-b border-line last:border-b-0">
+          <td className="py-3.5 pr-4 pl-5">
+            <span className="block h-3.5 w-3/4 animate-pulse rounded bg-surface-2" />
+            <span className="mt-2 block h-3 w-24 animate-pulse rounded bg-surface-2" />
+          </td>
+          {[0, 1, 2, 3, 4].map((c) => (
+            <td key={c} className="py-3.5 pr-4">
+              <span className="ml-auto block h-3.5 w-14 animate-pulse rounded bg-surface-2" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
 export default function ProjectsPage() {
-  const { data, error, isLoading } = useQuery({ queryKey: ["analyses"], queryFn: api.list });
+  const { data, error, isLoading, refetch, isRefetching } = useQuery({ queryKey: ["analyses"], queryFn: api.list });
+  const [filter, setFilter] = useState<Filter>("all");
+
+  const rows = data?.filter((r) => filter === "all" || r.origin === filter) ?? [];
+  const counts = { user: data?.filter((r) => r.origin === "user").length ?? 0, fixture: data?.filter((r) => r.origin === "fixture").length ?? 0 };
+
   return (
     <div className="h-full overflow-y-auto">
-      <header className="flex items-end justify-between gap-6 border-b border-rule px-8 pt-8 pb-5">
-        <div>
-          <h1 className="text-[26px] leading-tight font-[650] wdth-wide">Scripts</h1>
-          <p className="mt-1 text-[14px] text-ink-2">Every script and cut you’ve run through Retent AI, worst drop first.</p>
-        </div>
-        <Link
-          href="/new"
-          className="inline-flex items-center gap-2 rounded-[7px] bg-ink px-4 py-2 text-[14px] font-[600] text-paper transition-colors duration-200 hover:bg-primary-hover"
-        >
-          <FilePlus2 size={16} aria-hidden /> New analysis
-        </Link>
-      </header>
-      <div className="px-8 py-6">
-        {isLoading && <p className="text-[14px] text-ink-3">Loading scripts…</p>}
-        {error && (
-          <p className="text-[14px] text-pen-text">
-            Couldn’t reach the API. Start it with <code className="font-script">pnpm dev:api</code> and reload.
-          </p>
+      <PageHeader
+        title="Projects"
+        description="Every script, rough cut and published video you’ve run through Retent AI."
+        actions={
+          <>
+            <Button href={`/a/${SAMPLE}`} variant="secondary">
+              Open the sample
+            </Button>
+            <Button href="/new">
+              <FilePlus2 size={16} aria-hidden /> New analysis
+            </Button>
+          </>
+        }
+      />
+
+      <div className="flex flex-col gap-4 px-8 py-6 compact:px-6">
+        {data && data.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Segmented<Filter>
+              label="Show"
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: "all", label: `All · ${data.length}` },
+                { value: "user", label: `Yours · ${counts.user}` },
+                { value: "fixture", label: `Samples · ${counts.fixture}` },
+              ]}
+            />
+            <p className="text-[12.5px] text-ink-3">Intro is retention at 0:30. APV is average percentage viewed.</p>
+          </div>
         )}
-        {data && (
-          <table className="w-full border-collapse text-left text-[14px]">
-            <thead>
-              <tr className="border-b border-rule-strong text-[12.5px] text-ink-3">
-                <th className="py-2 pr-4 font-[560]">Title</th>
-                <th className="py-2 pr-4 font-[560]">Type</th>
-                <th className="py-2 pr-4 text-right font-[560]">Length</th>
-                <th className="py-2 pr-4 text-right font-[560]">Intro</th>
-                <th className="py-2 pr-4 text-right font-[560]">APV</th>
-                <th className="py-2 font-[560]">Biggest drop</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((r) => (
-                <tr key={r.id} className="group border-b border-rule transition-colors duration-150 hover:bg-paper-sunk/60">
-                  <td className="max-w-[420px] py-3 pr-4">
-                    <Link href={`/a/${r.id}`} className="block truncate font-[600] text-ink group-hover:underline" title={r.title}>
-                      {r.title}
-                    </Link>
-                    <span className="text-[12px] text-ink-3">
-                      {MODE_LABEL[r.input_mode]}
-                      {r.synthetic && " · development data"}
-                      {r.has_actual && " · has actual curve"}
-                    </span>
-                  </td>
-                  <td className="py-3 pr-4 text-ink-2">
-                    {CATEGORY_LABEL[r.category]} · {LANGUAGE_LABEL[r.language]}
-                  </td>
-                  <td className="tnum py-3 pr-4 text-right text-ink-2">{fmtTime(r.duration_seconds)}</td>
-                  <td className="tnum py-3 pr-4 text-right">{pct(r.intro_retention)}</td>
-                  <td className="tnum py-3 pr-4 text-right">{pct(r.apv)}</td>
-                  <td className="max-w-[320px] truncate py-3 text-pen-text">{r.worst_flag ?? <span className="text-ink-3">None above noise</span>}</td>
+
+        {error ? (
+          <Panel className="flex flex-col items-start gap-3" role="alert">
+            <span className="flex items-center gap-2 text-[15px] font-[600]">
+              <AlertTriangle size={17} className="text-drop" aria-hidden /> Couldn’t reach the API
+            </span>
+            <p className="max-w-[64ch] text-[13.5px] text-ink-2">
+              Start it with <code className="tc rounded bg-surface-2 px-1.5 py-0.5 text-[12.5px]">pnpm dev:api</code>, then try again.{" "}
+              <span className="text-ink-3">({(error as Error).message})</span>
+            </p>
+            <Button variant="secondary" size="sm" onClick={() => refetch()} loading={isRefetching}>
+              Try again
+            </Button>
+          </Panel>
+        ) : data && data.length === 0 ? (
+          <Panel className="flex flex-col items-center gap-3 py-14 text-center">
+            <span className="grid size-10 place-items-center rounded-full bg-surface-2 text-ink-3">
+              <FolderOpen size={19} aria-hidden />
+            </span>
+            <p className="text-[16px] font-[600]">No analyses yet</p>
+            <p className="max-w-[48ch] text-[13.5px] text-ink-2">
+              Paste a script, drop in a rough cut or link a published video. The first prediction takes under a minute.
+            </p>
+            <Button href="/new" className="mt-1">
+              <FilePlus2 size={16} aria-hidden /> Analyze your first script
+            </Button>
+          </Panel>
+        ) : (
+          <Panel padded={false} className="overflow-x-auto" aria-label="Analyses">
+            <table className="w-full min-w-[860px] border-collapse text-left text-[13.5px]">
+              <thead>
+                <tr className="border-b border-line">
+                  {["Title", "Type", "Length", "Intro", "APV", "Biggest drop"].map((h, i) => (
+                    <th
+                      key={h}
+                      scope="col"
+                      className={`eyebrow py-2.5 pr-4 font-[500] ${i === 0 ? "pl-5" : ""} ${i >= 2 && i <= 4 ? "text-right" : ""}`}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {isLoading ? <SkeletonRows /> : rows.map((r) => <Row key={r.id} r={r} />)}
+                {data && rows.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-ink-3">
+                      Nothing here yet. Your own analyses show up in this list once you run one.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </Panel>
         )}
       </div>
     </div>

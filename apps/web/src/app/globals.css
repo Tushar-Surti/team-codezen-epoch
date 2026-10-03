@@ -92,6 +92,9 @@
   --seg-on-bg: var(--primary);
   --seg-on-fg: var(--primary-fg);
   --seg-on-ring: none;
+  --nav-on-bg: var(--surface-2);
+  --nav-on-ring: none;
+  --eyebrow-size: 11px;
 
   /* Legacy names (Revision Draft theme). Kept as aliases while components move
      to the names above; removed in the final polish phase. */
@@ -194,10 +197,23 @@
   --seg-on-bg: var(--surface-2);
   --seg-on-fg: var(--ink);
   --seg-on-ring: inset 0 0 0 1px var(--line-strong);
+  --nav-on-bg: var(--surface-2);
+  --nav-on-ring: inset 0 0 0 1px var(--line);
+  --eyebrow-size: 10.5px;
 
   --cover: #08090a;
   --cover-2: #141518;
   --cover-3: #1f2125;
+}
+
+/* `compact:` applies when the sidebar is an icon rail: collapsed by the user, or a narrow window. */
+@custom-variant compact {
+  &:where([data-nav="collapsed"] *) {
+    @slot;
+  }
+  @media (width < 64rem) {
+    @slot;
+  }
 }
 
 @theme inline {
@@ -324,6 +340,16 @@
     letter-spacing: var(--pt-tracking);
     text-transform: var(--pt-transform);
     color: var(--pt-color);
+    line-height: 1.3;
+  }
+  /* Small caps label for groups and breadcrumbs: UI face in light, Geist Mono in dark. */
+  .eyebrow {
+    font-family: var(--ff-tc);
+    font-size: var(--eyebrow-size);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
     line-height: 1.3;
   }
 }

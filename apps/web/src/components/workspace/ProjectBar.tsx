@@ -1,101 +1,132 @@
 "use client";
 
 import clsx from "clsx";
-import { Download, Scissors, Zap } from "lucide-react";
+import { ChevronRight, Download, Plus, Scissors, Zap } from "lucide-react";
 import Link from "next/link";
+import { type KeyboardEvent, useRef } from "react";
 
+import { Badge, Button } from "@/components/ui";
 import type { Analysis } from "@/lib/contract.gen";
 import { CATEGORY_LABEL, LANGUAGE_LABEL, MODE_LABEL, fmtTime } from "@/lib/format";
-import { revision } from "@/lib/revisions";
+import { REVISIONS, revision } from "@/lib/revisions";
 import { useWorkspace } from "@/lib/workspace-store";
 
-export function ProjectBar({ analysis, onExport }: { analysis: Analysis; onExport: () => void }) {
+function DraftTabs() {
   const { drafts, activeDraft, setActiveDraft, newRevision } = useWorkspace();
-  const meta = analysis.meta;
-  return (
-    <header className="flex min-h-[60px] flex-wrap items-center gap-x-6 gap-y-2 border-b border-rule bg-paper px-6 py-2.5">
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-[18px] leading-tight font-[640] text-ink" title={meta.title}>
-          {meta.title}
-        </h1>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12.5px] text-ink-3">
-          <span>{CATEGORY_LABEL[meta.category]}</span>
-          <span aria-hidden>·</span>
-          <span>{LANGUAGE_LABEL[meta.language]}</span>
-          <span aria-hidden>·</span>
-          <span>{MODE_LABEL[meta.input_mode]}</span>
-          <span aria-hidden>·</span>
-          <span className="tnum">{fmtTime(analysis.metrics.duration_seconds)}</span>
-          {meta.channel && (
-            <>
-              <span aria-hidden>·</span>
-              <span>{meta.channel}</span>
-            </>
-          )}
-          {analysis.synthetic && (
-            <span
-              className="ml-1 rounded-full border border-rule-strong px-2 py-[1px] text-[11px] text-ink-2"
-              title="Development data: real engine output from the rules-only v0 model, not yet the trained model."
-            >
-              Development data · {analysis.model.version}
-            </span>
-          )}
-        </p>
-      </div>
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
-      <div role="tablist" aria-label="Drafts" className="flex items-center gap-1">
-        {drafts.map((d) => {
+  function onKey(e: KeyboardEvent, i: number) {
+    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const next = (i + step + drafts.length) % drafts.length;
+    setActiveDraft(drafts[next].key);
+    refs.current[next]?.focus();
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div
+        role="tablist"
+        aria-label="Drafts"
+        className="inline-flex gap-0.5 rounded-[calc(var(--r-control)+2px)] border border-line-strong bg-surface p-0.5"
+      >
+        {drafts.map((d, i) => {
           const r = revision(d.key);
           const active = d.key === activeDraft;
           return (
             <button
               key={d.key}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              type="button"
               role="tab"
               aria-selected={active}
+              tabIndex={active ? 0 : -1}
               onClick={() => setActiveDraft(d.key)}
+              onKeyDown={(e) => onKey(e, i)}
               className={clsx(
-                "relative flex items-center gap-2 rounded-[6px] px-3 py-1.5 text-[13px] font-[580] transition-colors duration-200",
-                active ? "bg-paper-sunk text-ink" : "text-ink-2 hover:bg-paper-sunk/60",
+                "inline-flex h-[calc(var(--h-control)-6px)] items-center gap-2 rounded-control px-2.5 text-[13px] font-[500] transition-[background-color,color,box-shadow] duration-150",
+                active ? "bg-(--seg-on-bg) text-(--seg-on-fg) shadow-(--seg-on-ring)" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
               )}
             >
               <span
                 aria-hidden
-                className="h-3.5 w-3 rounded-[2px] border border-ink/15"
-                style={{ background: d.key === "white" ? "var(--paper-raised)" : r.paper }}
+                className="size-2.5 rounded-[2px] border border-current/25"
+                style={{ background: d.key === "white" ? "var(--surface)" : r.ink }}
               />
               {r.name}
-              {d.key !== "white" && <span className="tnum text-[11.5px] font-[500] text-ink-3">{d.fixIds.length}</span>}
+              {d.key !== "white" && (
+                <span className="tc text-[11px] opacity-70" aria-label={`${d.fixIds.length} fixes`}>
+                  {d.fixIds.length}
+                </span>
+              )}
             </button>
           );
         })}
-        {drafts.length > 1 && drafts.length < 5 && (
-          <button
-            onClick={() => newRevision()}
-            className="rounded-[6px] px-2.5 py-1.5 text-[12.5px] text-ink-3 transition-colors duration-200 hover:bg-paper-sunk/60 hover:text-ink"
-          >
-            New revision
-          </button>
-        )}
+      </div>
+      {drafts.length > 1 && drafts.length < REVISIONS.length && (
+        <Button variant="ghost" size="sm" onClick={() => newRevision()} title="Start the next revision from this one">
+          <Plus size={14} aria-hidden /> Revision
+        </Button>
+      )}
+    </div>
+  );
+}
+
+export function ProjectBar({ analysis, onExport }: { analysis: Analysis; onExport: () => void }) {
+  const meta = analysis.meta;
+  const facts = [
+    CATEGORY_LABEL[meta.category],
+    LANGUAGE_LABEL[meta.language],
+    MODE_LABEL[meta.input_mode],
+    meta.channel,
+  ].filter(Boolean);
+
+  return (
+    <header className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2.5 border-b border-line bg-surface px-6 py-2.5">
+      <div className="min-w-0 flex-[1_1_320px]">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-[12px] text-ink-3">
+          <Link href="/projects" className="hover:text-ink hover:underline">
+            Projects
+          </Link>
+          <ChevronRight size={12} aria-hidden />
+        </nav>
+        <h1 className="truncate text-[16px] leading-snug font-[600] tracking-[-0.01em] text-ink" title={meta.title}>
+          {meta.title}
+        </h1>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-ink-3">
+          {facts.map((f) => (
+            <span key={f}>{f}</span>
+          ))}
+          <span className="tc">{fmtTime(analysis.metrics.duration_seconds)}</span>
+          {analysis.synthetic && (
+            <Badge
+              tone="warn"
+              className="h-5 text-[11px]"
+              title="Real engine output from the rules-only v0 model, not yet the trained model."
+            >
+              Development data · {analysis.model.version}
+            </Badge>
+          )}
+        </div>
       </div>
 
-      <Link
-        href={`/hooks?a=${analysis.id}`}
-        className="inline-flex items-center gap-2 rounded-[6px] border border-rule-strong bg-paper-raised px-3 py-1.5 text-[13px] font-[580] text-ink transition-colors duration-200 hover:border-ink/40"
-      >
-        <Zap size={15} aria-hidden /> Hook Lab
-      </Link>
-      <Link
-        href={`/shorts?a=${analysis.id}`}
-        className="inline-flex items-center gap-2 rounded-[6px] border border-rule-strong bg-paper-raised px-3 py-1.5 text-[13px] font-[580] text-ink transition-colors duration-200 hover:border-ink/40"
-      >
-        <Scissors size={15} aria-hidden /> Shorts
-      </Link>
-      <button
-        onClick={onExport}
-        className="inline-flex items-center gap-2 rounded-[6px] border border-rule-strong bg-paper-raised px-3 py-1.5 text-[13px] font-[580] text-ink transition-colors duration-200 hover:border-ink/40"
-      >
-        <Download size={15} aria-hidden /> Export
-      </button>
+      <DraftTabs />
+
+      <div className="flex items-center gap-1.5">
+        <Button href={`/hooks?a=${analysis.id}`} variant="ghost">
+          <Zap size={15} aria-hidden /> Hook Lab
+        </Button>
+        <Button href={`/shorts?a=${analysis.id}`} variant="ghost">
+          <Scissors size={15} aria-hidden /> Shorts
+        </Button>
+        <span aria-hidden className="mx-1 h-5 w-px bg-line" />
+        <Button variant="secondary" onClick={onExport}>
+          <Download size={15} aria-hidden /> Export
+        </Button>
+      </div>
     </header>
   );
 }
